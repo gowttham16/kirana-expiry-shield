@@ -4,7 +4,6 @@ import TopNav from './components/TopNav';
 import AddStockForm from './components/AddStockForm';
 import Dashboard from './pages/Dashboard';
 import InventoryList from './pages/InventoryList';
-// import { fetchExpiringInventory } from './api/inventoryApi';
 import { fetchExpiringInventory } from './api/apiService.js';
 
 export default function App() {

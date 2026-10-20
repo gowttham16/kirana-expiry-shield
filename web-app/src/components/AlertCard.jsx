@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle, Check, MinusCircle, MessageCircle } from 'lucide-react';
-import { deleteInventoryBatch, sellBatchUnit } from './api/inventoryApi';
+import { deleteInventoryBatch, sellBatchUnit } from '../api/apiService.js';
 
 export default function AlertCard({ item, onRefresh }) {
   const [loadingAction, setLoadingAction] = useState(false);
