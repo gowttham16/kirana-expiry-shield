@@ -82,4 +82,25 @@ export const sellBatchUnit = async (batchId, quantity = 1) => {
 
 
 
-const API_BASE_URL = 'https://gallery-outskirts-setup.ngrok-free.dev/api';
+const API_BASE_URL = "https://your-new-link.ngrok-free.app/api"; // Make sure /api is at the end if needed!
+
+
+
+export const scanProductImage = async (imageFile) => {
+  const formData = new FormData();
+  formData.append('file', imageFile);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/scan`, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) throw new Error("Failed to scan image");
+    
+    return await response.json();
+  } catch (error) {
+    console.error("OCR API Error:", error);
+    return null;
+  }
+};
