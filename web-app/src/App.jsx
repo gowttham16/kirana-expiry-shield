@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import TopNav from './components/TopNav';
 import AddStockForm from './components/AddStockForm';
 import Dashboard from './pages/Dashboard';
-import InventoryList from './pages/inventoryList';
-import { fetchExpiringInventory } from './api/inventoryApi';
+import InventoryList from './pages/InventoryList';
+import { fetchExpiringInventory } from '/api/inventoryApi';
 
 export default function App() {
   const [alerts, setAlerts] = useState([]);
