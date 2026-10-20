@@ -4,7 +4,7 @@ import axios from 'axios';
 axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
 // 2. Set your active Ngrok URL exactly once
-const API_BASE_URL = "https://gallery-outskirts-setup.ngrok-free.dev/api";
+const API_BASE_URL = "http://127.0.0.1:8000/api";
 
 // Fetch priority expiring stock for the main dashboard
 export const fetchExpiringInventory = async () => {
