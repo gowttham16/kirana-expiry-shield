@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Camera, Save, Search } from 'lucide-react';
-import { scanExpiryImage, addInventoryBatch, getProductByBarcode } from '../api/inventoryApi';
+import { scanExpiryImage, addInventoryBatch, getProductByBarcode } from '../api/apiService';
 
 export default function AddStockForm({ onClose, onRefresh }) {
   const [loadingOcr, setLoadingOcr] = useState(false);

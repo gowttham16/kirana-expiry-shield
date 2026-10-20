@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchAllInventory, deleteInventoryBatch } from '../api/inventoryApi';
+import { fetchAllInventory, deleteInventoryBatch } from '../api/apiService';
 import { Search, Trash2 } from 'lucide-react';
 
 export default function InventoryList() {
