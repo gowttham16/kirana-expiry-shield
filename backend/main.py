@@ -216,3 +216,19 @@ async def scan_product_label(file: UploadFile = File(...)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR Processing failed: {str(e)}")
+
+
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from ocr_service import extract_expiry_date
+
+app = FastAPI()
+
+# Add this block if you don't have it, or update it to use "*"
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # <-- This allows Vercel to connect safely
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)

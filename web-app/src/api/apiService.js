@@ -94,6 +94,9 @@ export const scanProductImage = async (imageFile) => {
     const response = await fetch(`${API_BASE_URL}/scan`, {
       method: 'POST',
       body: formData,
+      headers: {
+        'ngrok-skip-browser-warning': 'true' // <-- THIS LINE BYPASSES THE NGROK BLOCK
+      }
     });
     
     if (!response.ok) throw new Error("Failed to scan image");
