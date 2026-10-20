@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from ocr_service import extract_expiry_from_image
+from ocr_service import extract_expiry_date
 from db import supabase
 from schemas import AddStockRequest
 
@@ -183,3 +183,36 @@ def delete_inventory_batch(batch_id: str):
         return {"success": True, "message": "Batch cleared successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+        from fastapi import FastAPI, File, UploadFile, HTTPException
+# Make sure your existing imports (like CORS, pydantic models, etc.) stay here
+from ocr_service import extract_expiry_date # Adjust this import based on your exact function name
+
+app = FastAPI()
+
+# ... (your existing setup and routes) ...
+
+@app.post("/api/scan")
+async def scan_product_label(file: UploadFile = File(...)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    try:
+        # Read the image file into memory
+        image_bytes = await file.read()
+        
+        # Pass the bytes to your EasyOCR logic
+        # (Assuming extract_expiry_date is your function in ocr_service.py)
+        ocr_result = extract_expiry_date(image_bytes)
+        
+        return {
+            "success": True,
+            "filename": file.filename,
+            "extracted_text": ocr_result.get("text", ""),
+            "expiry_date": ocr_result.get("date", None)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OCR Processing failed: {str(e)}")

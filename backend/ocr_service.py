@@ -1,62 +1,45 @@
-import os
-import re
-from datetime import datetime
 import easyocr
+import re
+import numpy as np
+from PIL import Image
+import io
 
-# Initialize the EasyOCR reader once when the server boots
-reader = easyocr.Reader(['en'], gpu=False)
+# Initialize the EasyOCR reader (this loads the AI model into memory)
+# Note: If your laptop has an NVIDIA GPU, you can change gpu=False to gpu=True for faster scanning.
+reader = easyocr.Reader(['en'], gpu=False) 
 
-def normalize_date_string(raw: str) -> str:
-    # Fix DD/MM1YY -> DD/MM/YY
-    fixed = re.sub(r'(\d{2})[/-](\d{2})1(\d{2})\b', r'\1/\2/\3', raw)
-    # Fix DD1MM1YY -> DD/MM/YY
-    fixed = re.sub(r'(\d{2})1(\d{2})1(\d{2})\b', r'\1/\2/\3', fixed)
-    return fixed
+def extract_expiry_date(image_bytes: bytes) -> dict:
+    try:
+        # 1. Convert the raw image bytes into a NumPy array for EasyOCR
+        image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        image_np = np.array(image)
 
-def parse_date(date_str: str):
-    for fmt in ("%d/%m/%y", "%d/%m/%Y", "%m/%y", "%m/%Y", "%d-%m-%y"):
-        try:
-            return datetime.strptime(date_str, fmt)
-        except ValueError:
-            continue
-    return None
-
-def extract_expiry_from_image(image_bytes: bytes) -> dict:
-    # EasyOCR can read raw image bytes directly without saving to disk
-    results = reader.readtext(image_bytes)
-    raw_detections = [item[1] for item in results]
-    full_text = " ".join(raw_detections)
-    
-    normalized_text = normalize_date_string(full_text)
-    pattern_standard = r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b'
-    
-    candidates = []
-    for match in re.findall(pattern_standard, normalized_text):
-        dt = parse_date(match)
-        if dt:
-            candidates.append((dt, match))
-            
-    for word in raw_detections:
-        fixed_word = normalize_date_string(word)
-        for match in re.findall(pattern_standard, fixed_word):
-            dt = parse_date(match)
-            if dt:
-                candidates.append((dt, match))
+        # 2. Extract text from the image
+        # detail=0 tells EasyOCR to just return a simple list of detected text strings
+        text_lines = reader.readtext(image_np, detail=0)
+        full_text = " ".join(text_lines)
+        
+        # 3. Search the extracted text for common expiry date patterns
+        date_patterns = [
+            r'\b\d{2}/\d{2}/\d{4}\b',  # Matches DD/MM/YYYY
+            r'\b\d{2}-\d{2}-\d{4}\b',  # Matches DD-MM-YYYY
+            r'\b\d{2}/\d{4}\b',        # Matches MM/YYYY
+            r'\b\d{2}/\d{2}\b',        # Matches MM/YY
+            r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{4}\b' # Matches Jan 2025
+        ]
+        
+        found_date = None
+        for pattern in date_patterns:
+            matches = re.findall(pattern, full_text, re.IGNORECASE)
+            if matches:
+                # Grab the first matching date we find
+                found_date = matches[0]
+                break
                 
-    if not candidates:
-        return {"success": False, "expiry_date": None, "message": "No date detected"}
-
-    # Sort chronological: earlier = PKD, later = EXP
-    unique_candidates = sorted(list({dt: raw for dt, raw in candidates}.items()), key=lambda x: x[0])
-    
-    exp_dt, exp_raw = unique_candidates[-1]
-    
-    # Format to standard ISO format YYYY-MM-DD for PostgreSQL / Supabase
-    iso_date = exp_dt.strftime("%Y-%m-%d")
-    
-    return {
-        "success": True,
-        "expiry_date": iso_date,
-        "raw_matched": exp_raw,
-        "all_detected_dates": [raw for _, raw in unique_candidates]
-    }
+        return {
+            "text": full_text,
+            "date": found_date
+        }
+    except Exception as e:
+        print(f"Error during OCR processing: {e}")
+        return {"text": "", "date": None}
