@@ -1,8 +1,12 @@
 import axios from 'axios';
 
-// const API_BASE_URL = 'http://127.0.0.1:8000/api';
+// 1. Globally bypass Ngrok's browser warning for ALL requests
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
-// 1. Fetch priority expiring stock for the main dashboard
+// 2. Set your active Ngrok URL exactly once
+const API_BASE_URL = "https://gallery-outskirts-setup.ngrok-free.dev/api";
+
+// Fetch priority expiring stock for the main dashboard
 export const fetchExpiringInventory = async () => {
   try {
     const response = await axios.get(`${API_BASE_URL}/inventory/expiring`);
@@ -13,7 +17,7 @@ export const fetchExpiringInventory = async () => {
   }
 };
 
-// 2. Fetch complete store inventory for the inventory catalog page
+// Fetch complete store inventory for the inventory catalog page
 export const fetchAllInventory = async () => {
   try {
     const response = await axios.get(`${API_BASE_URL}/inventory/all`);
@@ -24,7 +28,7 @@ export const fetchAllInventory = async () => {
   }
 };
 
-// 3. Search product catalog by barcode (exported under both names)
+// Search product catalog by barcode
 export const getProductByBarcode = async (barcode) => {
   try {
     const response = await axios.get(`${API_BASE_URL}/products/${barcode}`);
@@ -36,26 +40,34 @@ export const getProductByBarcode = async (barcode) => {
 };
 export const lookupBarcode = getProductByBarcode;
 
-// 4. Send image to OCR backend (exported under both names)
-export const extractExpiryDate = async (file) => {
+// Single, unified image scanning function pointing to your working /scan route
+export const scanProductImage = async (imageFile) => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', imageFile);
 
-  const response = await axios.post(`${API_BASE_URL}/ocr/extract-date`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  return response.data;
+  try {
+    const response = await axios.post(`${API_BASE_URL}/scan`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("OCR API Error:", error);
+    return null;
+  }
 };
-export const extractDateFromImage = extractExpiryDate;
+// Aliases so your older components don't crash
+export const extractExpiryDate = scanProductImage;
+export const extractDateFromImage = scanProductImage;
+export const scanExpiryImage = scanProductImage;
 
-// 5. Save new inventory batch (exported under both names)
+// Save new inventory batch
 export const addInventoryBatch = async (payload) => {
   const response = await axios.post(`${API_BASE_URL}/inventory/add`, payload);
   return response.data;
 };
 export const saveStock = addInventoryBatch;
 
-// 6. Delete a batch
+// Delete a batch
 export const deleteInventoryBatch = async (batchId) => {
   try {
     const response = await axios.delete(`${API_BASE_URL}/inventory/batch/${batchId}`);
@@ -66,9 +78,7 @@ export const deleteInventoryBatch = async (batchId) => {
   }
 };
 
-export const scanExpiryImage = extractExpiryDate;
-
-
+// Sell/Update batch unit
 export const sellBatchUnit = async (batchId, quantity = 1) => {
   try {
     const response = await axios.patch(`${API_BASE_URL}/inventory/batch/${batchId}/sell?quantity=${quantity}`);
@@ -76,34 +86,5 @@ export const sellBatchUnit = async (batchId, quantity = 1) => {
   } catch (error) {
     console.error("Error updating batch quantity:", error);
     return { success: false };
-  }
-};
-
-
-
-
-const API_BASE_URL = "https://your-new-link.ngrok-free.app/api"; // Make sure /api is at the end if needed!
-
-
-
-export const scanProductImage = async (imageFile) => {
-  const formData = new FormData();
-  formData.append('file', imageFile);
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/scan`, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'ngrok-skip-browser-warning': 'true' // <-- THIS LINE BYPASSES THE NGROK BLOCK
-      }
-    });
-    
-    if (!response.ok) throw new Error("Failed to scan image");
-    
-    return await response.json();
-  } catch (error) {
-    console.error("OCR API Error:", error);
-    return null;
   }
 };
