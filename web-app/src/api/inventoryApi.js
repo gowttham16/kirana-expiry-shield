@@ -78,3 +78,8 @@ export const sellBatchUnit = async (batchId, quantity = 1) => {
     return { success: false };
   }
 };
+
+
+
+
+const API_BASE_URL = 'https://gallery-outskirts-setup.ngrok-free.dev/api';
