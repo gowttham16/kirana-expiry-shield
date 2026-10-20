@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Camera, Save, Search } from 'lucide-react';
-import { scanExpiryImage, addInventoryBatch, getProductByBarcode } from '../api/apiService';
+// 1. CHANGED: Now importing our working 'scanProductImage' function
+import { scanProductImage, addInventoryBatch, getProductByBarcode } from '../api/apiService';
 
 export default function AddStockForm({ onClose, onRefresh }) {
   const [loadingOcr, setLoadingOcr] = useState(false);
@@ -21,14 +22,12 @@ export default function AddStockForm({ onClose, onRefresh }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // NEW: Barcode Lookup Logic
   const handleBarcodeLookup = async () => {
     if (!formData.barcode) return;
     setLookingUp(true);
     
     const result = await getProductByBarcode(formData.barcode);
     if (result.exists) {
-      // Auto-fill the form with the database details
       setFormData(prev => ({
         ...prev,
         name: result.product.name,
@@ -45,9 +44,23 @@ export default function AddStockForm({ onClose, onRefresh }) {
 
     setLoadingOcr(true);
     try {
-      const result = await scanExpiryImage(file);
-      if (result.success && result.expiry_date) {
-        setFormData({ ...formData, expiry_date: result.expiry_date });
+      // 2. CHANGED: Execute our working Ngrok-bypass API call
+      const result = await scanProductImage(file);
+      
+      if (result && result.success && result.expiry_date) {
+        let foundDate = result.expiry_date;
+        
+        // 3. NEW: HTML Date inputs require YYYY-MM-DD. 
+        // If the AI finds DD/MM/YYYY or DD-MM-YYYY, flip it around so it auto-fills the box.
+        if (foundDate.includes('/')) {
+          const parts = foundDate.split('/');
+          if (parts.length === 3) foundDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        } else if (foundDate.includes('-') && foundDate.split('-')[0].length === 2) {
+          const parts = foundDate.split('-');
+          if (parts.length === 3) foundDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+        setFormData({ ...formData, expiry_date: foundDate });
       } else {
         alert("Could not detect a clear date. Please type it manually.");
       }
@@ -87,7 +100,6 @@ export default function AddStockForm({ onClose, onRefresh }) {
           <div className="modal-body p-4">
             <form onSubmit={handleSubmit}>
               <div className="row g-3">
-                {/* UPADTED: Barcode field with a lookup button */}
                 <div className="col-12">
                   <label className="form-label small fw-bold">Barcode</label>
                   <div className="input-group">
@@ -97,7 +109,7 @@ export default function AddStockForm({ onClose, onRefresh }) {
                       className="form-control" 
                       value={formData.barcode}
                       onChange={handleChange} 
-                      onBlur={handleBarcodeLookup} // Triggers when user clicks out of the box
+                      onBlur={handleBarcodeLookup}
                       required 
                     />
                     <button 
