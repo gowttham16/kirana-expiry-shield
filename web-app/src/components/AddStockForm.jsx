@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Save, Search, ScanBarcode, ScanText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Camera, Save, Search, ScanBarcode, ScanText, Image as ImageIcon } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { scanProductImage, addInventoryBatch, getProductByBarcode } from '../api/apiService';
 
@@ -9,11 +9,6 @@ export default function AddStockForm({ onClose, onRefresh }) {
   const [lookingUp, setLookingUp] = useState(false);
   const [scannedTextHelper, setScannedTextHelper] = useState("");
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
-  
-  // NEW: State for the live expiry date camera
-  const [isDateCameraOpen, setIsDateCameraOpen] = useState(false);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
 
   const [formData, setFormData] = useState({
     barcode: '',
@@ -49,7 +44,6 @@ export default function AddStockForm({ onClose, onRefresh }) {
     setLookingUp(false);
   };
 
-  // Barcode Scanner Logic
   useEffect(() => {
     let scanner = null;
     if (isScanningBarcode) {
@@ -73,50 +67,8 @@ export default function AddStockForm({ onClose, onRefresh }) {
     };
   }, [isScanningBarcode]);
 
-  // NEW: Start the Expiry Date Camera
-  const startDateCamera = async () => {
-    setIsDateCameraOpen(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      alert("Camera access denied or unavailable.");
-      setIsDateCameraOpen(false);
-    }
-  };
-
-  // NEW: Stop the Expiry Date Camera
-  const stopDateCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach(track => track.stop());
-    }
-    setIsDateCameraOpen(false);
-  };
-
-  // NEW: Snap frame from video and send to AI
-  const captureAndExtractDate = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    stopDateCamera();
-
-    canvas.toBlob(async (blob) => {
-      const file = new File([blob], "captured_date.jpg", { type: "image/jpeg" });
-      await processOcrImage(file);
-    }, 'image/jpeg');
-  };
-
-  // REFACTORED: Unified AI logic for both file uploads and live camera snaps
   const processOcrImage = async (file) => {
+    if (!file) return;
     setLoadingOcr(true);
     setScannedTextHelper(""); 
     
@@ -178,7 +130,7 @@ export default function AddStockForm({ onClose, onRefresh }) {
         <div className="modal-content border-0 shadow-lg">
           <div className="modal-header bg-primary text-white">
             <h5 className="modal-title fw-bold">Scan & Add Stock</h5>
-            <button type="button" className="btn-close btn-close-white" onClick={() => { stopDateCamera(); onClose(); }}></button>
+            <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
           
           <div className="modal-body p-4">
@@ -235,29 +187,36 @@ export default function AddStockForm({ onClose, onRefresh }) {
                     Auto-Extract Expiry Date
                   </label>
                   
-                  {/* NEW: Live Date Camera View */}
-                  {isDateCameraOpen ? (
-                    <div className="mb-3 text-center">
-                      <video ref={videoRef} autoPlay playsInline className="w-100 rounded border bg-dark mb-2" style={{ maxHeight: '250px', objectFit: 'cover' }}></video>
-                      <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
-                      <div className="d-flex gap-2 justify-content-center">
-                        <button type="button" className="btn btn-success fw-bold flex-grow-1" onClick={captureAndExtractDate}>
-                          <Camera size={18} className="me-2"/> Snap & Extract
-                        </button>
-                        <button type="button" className="btn btn-danger" onClick={stopDateCamera}>Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="d-flex gap-2 mb-3">
-                      <button type="button" className="btn btn-outline-primary d-flex align-items-center justify-content-center flex-grow-1" onClick={startDateCamera}>
-                        <Camera size={18} className="me-2" /> Live Scan Date
+                  <div className="d-flex gap-2 mb-3">
+                    {/* Native Camera Button (Hyper-optimized for mobile) */}
+                    <div className="flex-grow-1 position-relative">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment" 
+                        className="form-control position-absolute opacity-0 w-100 h-100" 
+                        style={{ cursor: 'pointer', zIndex: 10 }} 
+                        onChange={(e) => processOcrImage(e.target.files[0])} 
+                      />
+                      <button type="button" className="btn btn-primary w-100 d-flex align-items-center justify-content-center shadow-sm">
+                        <Camera size={18} className="me-2" /> Use Camera
                       </button>
-                      <div className="flex-grow-1 position-relative">
-                        <input type="file" accept="image/*" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer' }} onChange={(e) => processOcrImage(e.target.files[0])} />
-                        <button type="button" className="btn btn-outline-secondary w-100">Upload Photo</button>
-                      </div>
                     </div>
-                  )}
+
+                    {/* Standard Gallery Upload */}
+                    <div className="flex-grow-1 position-relative">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="form-control position-absolute opacity-0 w-100 h-100" 
+                        style={{ cursor: 'pointer', zIndex: 10 }} 
+                        onChange={(e) => processOcrImage(e.target.files[0])} 
+                      />
+                      <button type="button" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center bg-white shadow-sm">
+                        <ImageIcon size={18} className="me-2" /> Gallery
+                      </button>
+                    </div>
+                  </div>
                   
                   {loadingOcr && <div className="alert alert-warning small mb-2 py-2">Scanning AI image... please wait.</div>}
                   
@@ -273,7 +232,7 @@ export default function AddStockForm({ onClose, onRefresh }) {
               </div>
 
               <div className="mt-4 d-flex justify-content-end gap-2">
-                <button type="button" className="btn btn-light" onClick={() => { stopDateCamera(); onClose(); }}>Cancel</button>
+                <button type="button" className="btn btn-light" onClick={onClose}>Cancel</button>
                 <button type="submit" className="btn btn-success d-flex align-items-center" disabled={saving || loadingOcr}>
                   <Save size={18} className="me-2" />
                   {saving ? "Saving..." : "Save Stock"}
