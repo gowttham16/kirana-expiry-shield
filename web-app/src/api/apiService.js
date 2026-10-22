@@ -3,8 +3,8 @@ import axios from 'axios';
 // 1. Globally bypass Ngrok's browser warning for ALL requests
 axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
-// 2. Set your active Ngrok URL exactly once
-const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
+// 2. Set your active Local URL (REMOVED the /v1)
+const API_BASE_URL = "http://127.0.0.1:8000/api";
 
 // Fetch priority expiring stock for the main dashboard
 export const fetchExpiringInventory = async () => {

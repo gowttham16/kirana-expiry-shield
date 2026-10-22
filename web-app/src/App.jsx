@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import TopNav from './components/TopNav';
+// Corrected path: Dashboard is in the pages folder
+import Dashboard from './pages/Dashboard'; 
 import AddStockForm from './components/AddStockForm';
-import Dashboard from './pages/Dashboard';
-import InventoryList from './pages/InventoryList';
-import { fetchExpiringInventory } from './api/apiService.js';
+import { fetchExpiringInventory } from './api/apiService';
+import AllInventory from './components/AllInventory'; 
 
 export default function App() {
+  const [showScanner, setShowScanner] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
 
-  const fetchInventory = async () => {
+  const loadAlerts = async () => {
     setLoading(true);
     const data = await fetchExpiringInventory();
     setAlerts(data);
@@ -19,34 +20,28 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchInventory();
+    loadAlerts();
   }, []);
 
   return (
-    <BrowserRouter>
-      <div className="min-vh-100 bg-light">
-        <TopNav onOpenModal={() => setShowModal(true)} />
-
+    <Router>
+      <div className="bg-light min-vh-100">
+        <TopNav onOpenModal={() => setShowScanner(true)} />
+        
         <div className="container py-4">
           <Routes>
-            <Route 
-              path="/" 
-              element={<Dashboard alerts={alerts} loading={loading} onRefresh={fetchInventory} />} 
-            />
-            <Route 
-              path="/inventory" 
-              element={<InventoryList />} 
-            />
+            <Route path="/" element={<Dashboard alerts={alerts} loading={loading} onRefresh={loadAlerts} />} />
+            <Route path="/inventory" element={<AllInventory />} />
           </Routes>
         </div>
 
-        {showModal && (
+        {showScanner && (
           <AddStockForm 
-            onClose={() => setShowModal(false)} 
-            onStockAdded={fetchInventory} 
+            onClose={() => setShowScanner(false)} 
+            onRefresh={loadAlerts} 
           />
         )}
       </div>
-    </BrowserRouter>
+    </Router>
   );
 }

@@ -34,8 +34,23 @@ export default function AlertCard({ item, onRefresh }) {
   };
 
   const shareOnWhatsApp = () => {
-    const discountedPrice = Math.round(item.potential_loss_rupees / item.quantity * 0.7); // 30% off suggestion
-    const text = `*Flash Clearance Deal!*%0A${item.product_name} available at special offer price: Rs. ${discountedPrice}!%0ALimited stock (${item.quantity} units left). Grab before stocks run out!`;
+    if (item.status === 'EXPIRED') {
+      alert("This item is already expired. It should be discarded, not sold.");
+      return;
+    }
+
+    const basePrice = Math.round(item.potential_loss_rupees / item.quantity);
+    
+    // Dynamically apply discounts based on the backend risk logic
+    let discountPercent = 10; // Default 10%
+    if (item.status === 'CRITICAL') discountPercent = 50;
+    else if (item.status === 'WARNING') discountPercent = 20;
+
+    const offerPrice = (basePrice * (1 - (discountPercent / 100))).toFixed(2);
+    
+    // Format the marketing copy with emojis for WhatsApp
+    const text = `🚨 *Kirana Special Offer!* 🚨%0A%0AGet *${item.product_name}* at ${discountPercent}% OFF!%0A%0A📉 Original MRP: ₹${basePrice}%0A🔥 *Offer Price: ₹${offerPrice}*%0A📦 Only ${item.quantity} left in stock.%0A%0AHurry before it's gone! Message us to reserve yours.`;
+    
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
@@ -65,9 +80,9 @@ export default function AlertCard({ item, onRefresh }) {
           <div className="d-flex flex-wrap gap-2 mt-1">
             {/* WhatsApp Liquidation Trigger */}
             <button 
-              className="btn btn-sm btn-outline-success fw-bold d-flex align-items-center shadow-sm"
+              className={`btn btn-sm fw-bold d-flex align-items-center shadow-sm ${item.status === 'EXPIRED' ? 'btn-outline-secondary' : 'btn-outline-success'}`}
               onClick={shareOnWhatsApp}
-              title="Share discount offer via WhatsApp"
+              title={item.status === 'EXPIRED' ? "Cannot share expired items" : "Share discount offer via WhatsApp"}
             >
               <MessageCircle size={15} className="me-1" />
               Offer on WA
