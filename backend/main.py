@@ -52,52 +52,6 @@ def get_all_inventory():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @app.get("/api/inventory/expiring")
-# def get_expiring_inventory():
-#     try:
-#         response = supabase.table("inventory_batches").select(
-#             "id, batch_number, quantity, expiry_date, barcode, products(name, mrp)"
-#         ).execute()
-        
-#         alerts = []
-#         today = datetime.now().date()
-        
-#         for item in response.data:
-#             exp_date = datetime.strptime(item["expiry_date"], "%Y-%m-%d").date()
-#             days_left = (exp_date - today).days
-            
-#             status = "SAFE"
-#             action = "None"
-#             if days_left < 0:
-#                 status = "EXPIRED"
-#                 action = "Throw Away"
-#             elif days_left <= 30:
-#                 status = "CRITICAL"
-#                 action = "50% Discount"
-#             elif days_left <= 90:
-#                 status = "WARNING"
-#                 action = "20% Discount"
-
-#             mrp = item["products"]["mrp"] if item["products"] else 0
-#             name = item["products"]["name"] if item["products"] else "Unknown Product"
-#             loss = item["quantity"] * mrp
-            
-#             alerts.append({
-#                 "batch_id": item["id"],
-#                 "barcode": item["barcode"],
-#                 "product_name": name,
-#                 "quantity": item["quantity"],
-#                 "days_left": days_left,
-#                 "status": status,
-#                 "action": action,
-#                 "potential_loss_rupees": loss
-#             })
-            
-#         alerts.sort(key=lambda x: x["days_left"])
-#         return {"data": alerts}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @app.get("/api/inventory/expiring")
@@ -233,19 +187,51 @@ def get_product_by_barcode(barcode: str):
     return {"exists": True, "product": response.data[0]}
 
 
-# @app.post("/api/scan")
-# async def scan_product_label(file: UploadFile = File(...)):
-#     if not file.content_type.startswith("image/"):
-#         raise HTTPException(status_code=400, detail="File must be an image")
-#     try:
-#         image_bytes = await file.read()
-#         ocr_result = extract_expiry_date(image_bytes)
+from datetime import datetime, timedelta
+
+@app.get("/api/inventory/expiring")
+def get_expiring_inventory():
+    try:
+        # Calculate the date 30 days from today
+        today = datetime.now().date()
+        threshold_date = today + timedelta(days=30)
         
-#         return {
-#             "success": True,
-#             "filename": file.filename,
-#             "extracted_text": ocr_result.get("text", ""),
-#             "expiry_date": ocr_result.get("date", None)
-#         }
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"OCR Processing failed: {str(e)}")
+        # Query Supabase for items expiring on or before the threshold
+        response = supabase.table("inventory") \
+            .select("*") \
+            .lte("expiry_date", str(threshold_date)) \
+            .order("expiry_date") \
+            .execute()
+        
+        # Calculate live remaining days for the frontend
+        data = response.data
+        for item in data:
+            if item.get('expiry_date'):
+                exp_dt = datetime.strptime(item['expiry_date'], "%Y-%m-%d").date()
+                item['remaining_days'] = (exp_dt - today).days
+
+        return {"success": True, "data": data}
+    except Exception as e:
+        return {"success": False, "error": str(e), "data": []}
+
+
+
+
+@app.patch("/api/inventory/batch/{batch_id}/sell")
+def sell_inventory_unit(batch_id: int, quantity: int = 1):
+    try:
+        item = supabase.table("inventory").select("quantity").eq("id", batch_id).execute()
+        if not item.data:
+            return {"success": False, "message": "Item not found"}
+            
+        current_qty = item.data[0]['quantity']
+        new_qty = max(0, current_qty - quantity)
+        
+        if new_qty == 0:
+            supabase.table("inventory").delete().eq("id", batch_id).execute()
+        else:
+            supabase.table("inventory").update({"quantity": new_qty}).eq("id", batch_id).execute()
+            
+        return {"success": True, "new_quantity": new_qty}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
