@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Save, Search, ScanBarcode, ScanText, Image as ImageIcon, Crop as CropIcon } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import ReactCrop from 'react-image-crop';
+// import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { scanProductImage, addInventoryBatch, getProductByBarcode } from '../api/apiService';
 
