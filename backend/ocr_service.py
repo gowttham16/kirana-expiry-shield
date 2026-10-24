@@ -4,50 +4,73 @@ from datetime import datetime
 
 def format_to_iso(date_str):
     try:
-        # Keep ONLY numbers. Turns "19l08/26" directly into "190826"
-        clean = re.sub(r'[^\d]', '', date_str)
-        if len(clean) == 6:  # DDMMYY
-            return f"20{clean[4:6]}-{clean[2:4]}-{clean[0:2]}"
-        elif len(clean) == 8: # DDMMYYYY
-            return f"{clean[4:8]}-{clean[2:4]}-{clean[0:2]}"
+        clean_date = re.sub(r'[\.\-]', '/', date_str.strip())
+        parts = clean_date.split('/')
+        
+        if len(parts) == 3:
+            day, month, year = parts
+            if len(year) == 2: year = f"20{year}"
+            return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+            
+        elif len(parts) == 2:
+            month, year = parts
+            if len(year) == 2: year = f"20{year}"
+            if month in ['04', '06', '09', '11']: return f"{year}-{month.zfill(2)}-30"
+            elif month == '02': return f"{year}-02-28"
+            else: return f"{year}-{month.zfill(2)}-31"
     except:
-        pass
-    return ""
+        return None
+    return date_str
 
 def extract_expiry_date(image_bytes: bytes) -> dict:
     try:
+        # Using Engine 1 which worked best for your natural photos
         response = requests.post(
             'https://api.ocr.space/parse/image',
             files={'file': ('image.jpg', image_bytes, 'image/jpeg')},
-            data={'apikey': 'helloworld', 'language': 'eng', 'scale': 'true', 'isTable': 'true', 'OCREngine': '2'},
+            data={
+                'apikey': 'helloworld', 
+                'language': 'eng', 
+                'scale': 'true', 
+                'OCREngine': '1'
+            },
             timeout=15
         )
-        res = response.json()
-        text = res['ParsedResults'][0]['ParsedText'] if res.get('ParsedResults') else ""
+        result = response.json()
         
-        # Super-Greedy Regex: Finds 2 digits, 1-3 random characters/spaces, 2 digits, 1-3 random characters, 2-4 digits.
-        pattern = r'(\d{2}[^\d]{1,3}\d{2}[^\d]{1,3}(?:20)?\d{2})'
-        matches = re.findall(pattern, text)
+        full_text = result['ParsedResults'][0].get('ParsedText', '') if result.get('ParsedResults') else ""
+        clean_text = full_text.replace('\r', ' ').replace('\n', ' ')
         
-        mfg_date, exp_date = "", ""
-        if len(matches) >= 2:
-            mfg_date = format_to_iso(matches[0])
-            exp_date = format_to_iso(matches[-1])
-        elif len(matches) == 1:
-            exp_date = format_to_iso(matches[0])
+        pattern_full = r'\b(?:0?[1-9]|[12]\d|3[01])[/\-\.](?:0?[1-9]|1[0-2])[/\-\.](?:20[2-3]\d|[2-3]\d)\b'
+        pattern_partial = r'\b(?:0?[1-9]|1[0-2])[/\-\.](?:20[2-3]\d|[2-3]\d)\b'
+        
+        dates = re.findall(pattern_full, clean_text)
+        if not dates:
+            dates = re.findall(pattern_partial, clean_text)
             
+        mfg_date = ""
+        exp_date = ""
         remaining_days = 0
+        
+        if len(dates) >= 2:
+            mfg_date = format_to_iso(dates[0])
+            exp_date = format_to_iso(dates[-1])
+        elif len(dates) == 1:
+            exp_date = format_to_iso(dates[0])
+
         if exp_date:
             try:
-                remaining_days = (datetime.strptime(exp_date, "%Y-%m-%d") - datetime.now()).days
+                exp_dt = datetime.strptime(exp_date, "%Y-%m-%d")
+                remaining_days = (exp_dt - datetime.now()).days
             except:
                 pass
 
         return {
-            "text": text.strip(),
+            "text": full_text.strip(),
             "mfg_date": mfg_date,
             "exp_date": exp_date,
             "remaining_days": remaining_days
         }
     except Exception as e:
+        print(f"OCR Error: {e}")
         return {"text": "", "mfg_date": "", "exp_date": "", "remaining_days": 0}
