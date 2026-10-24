@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchAllInventory, deleteInventoryBatch } from '../api/apiService';
-import { Search, Trash2 } from 'lucide-react';
+import { Search, Trash2, Download } from 'lucide-react';
 
 export default function InventoryList() {
   const [items, setItems] = useState([]);
@@ -19,7 +19,7 @@ export default function InventoryList() {
   }, []);
 
   const handleDelete = async (batchId) => {
-    if (confirm("Remove this batch from store records?")) {
+    if (window.confirm("Remove this batch from store records?")) {
       await deleteInventoryBatch(batchId);
       loadData();
     }
@@ -31,32 +31,25 @@ export default function InventoryList() {
     i.category.toLowerCase().includes(search.toLowerCase())
   );
 
-
   const handleExportReport = () => {
-    // Assuming your state variable holding the inventory array is called 'items'
     if (!items || items.length === 0) {
       alert("No inventory data to export.");
       return;
     }
 
-    // Define CSV Headers
     const headers = ["Product Name,Barcode,Category,Stock Quantity,MRP (Rs),Total Value (Rs),Mfg Date,Expiry Date,Shelf Life (Days)"];
     
-    // Map data to rows
     const rows = items.map(item => {
       const totalValue = (item.quantity * item.mrp).toFixed(2);
-      // Escape commas in names to prevent CSV column breaking
       const safeName = item.name ? item.name.replace(/,/g, '') : 'Unknown'; 
       
       return `${safeName},${item.barcode},${item.category || 'General'},${item.quantity},${item.mrp},${totalValue},${item.mfg_date || 'N/A'},${item.expiry_date || 'N/A'},${item.remaining_days || 0}`;
     });
 
-    // Generate and download file
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     
-    // Names file with today's date automatically
     const today = new Date().toISOString().split('T')[0];
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", `Kirana_Inventory_Report_${today}.csv`);
@@ -66,20 +59,30 @@ export default function InventoryList() {
     document.body.removeChild(link);
   };
 
-
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="fw-bold text-secondary mb-0">Store Inventory Catalog</h4>
-        <div className="input-group" style={{ maxWidth: '320px' }}>
-          <span className="input-group-text bg-white"><Search size={16} /></span>
-          <input 
-            type="text" 
-            className="form-control" 
-            placeholder="Search name, barcode..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        
+        <div className="d-flex gap-2">
+          <button 
+            className="btn btn-success d-flex align-items-center" 
+            onClick={handleExportReport}
+          >
+            <Download size={18} className="me-2" />
+            Export Report
+          </button>
+
+          <div className="input-group" style={{ maxWidth: '320px' }}>
+            <span className="input-group-text bg-white"><Search size={16} /></span>
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="Search name, barcode..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -127,12 +130,6 @@ export default function InventoryList() {
                       <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(row.batch_id)}>
                         <Trash2 size={16} />
                       </button>
-                      <button 
-                      className="btn btn-success d-flex align-items-center" 
-                      onClick={handleExportReport}>
-                      <Download size={18} className="me-2" />
-                      Export Report
-                    </button>
                     </td>
                   </tr>
                 ))
