@@ -44,6 +44,25 @@ export default function LiquidationDashboard() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
+  const handleSellOne = async (batchId) => {
+    // Ensure your backend API is called here, e.g.: await sellInventoryUnit(batchId, 1);
+    
+    // Updates the UI instantly without refreshing the page
+    setItems(prevItems => prevItems.map(item => 
+      item.id === batchId ? { ...item, quantity: item.quantity - 1 } : item
+    ).filter(item => item.quantity > 0));
+  };
+
+  const handleClearAll = async (batchId) => {
+    const isConfirmed = window.confirm("Shall I clear all?");
+    if (isConfirmed) {
+      // Ensure your backend API is called here, e.g.: await clearInventoryBatch(batchId);
+      
+      // Removes the item from the UI instantly
+      setItems(prevItems => prevItems.filter(item => item.id !== batchId));
+    }
+  };
+
   return (
     <div className="container mt-4">
       <h4 className="fw-bold mb-4 d-flex align-items-center text-danger">
@@ -68,9 +87,13 @@ export default function LiquidationDashboard() {
     Offer on WA
   </button>
   
-  <button className="btn btn-outline-primary btn-sm">Sell 1</button>
-  <button className="btn btn-outline-danger btn-sm">Clear All</button>
+  {/* <button className="btn btn-outline-primary btn-sm">Sell 1</button> */}
+  {/* <button className="btn btn-outline-danger btn-sm">Clear All</button> */}
+  <button className="btn btn-outline-primary btn-sm" onClick={() => handleSellOne(item.id)}>Sell 1</button>
+<button className="btn btn-outline-danger btn-sm" onClick={() => handleClearAll(item.id)}>Clear All</button>
 </div>
+
+
             
             return (
               <div key={item.id} className="col-12 col-md-6 col-lg-4">

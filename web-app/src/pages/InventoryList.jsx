@@ -31,6 +31,42 @@ export default function InventoryList() {
     i.category.toLowerCase().includes(search.toLowerCase())
   );
 
+
+  const handleExportReport = () => {
+    // Assuming your state variable holding the inventory array is called 'items'
+    if (!items || items.length === 0) {
+      alert("No inventory data to export.");
+      return;
+    }
+
+    // Define CSV Headers
+    const headers = ["Product Name,Barcode,Category,Stock Quantity,MRP (Rs),Total Value (Rs),Mfg Date,Expiry Date,Shelf Life (Days)"];
+    
+    // Map data to rows
+    const rows = items.map(item => {
+      const totalValue = (item.quantity * item.mrp).toFixed(2);
+      // Escape commas in names to prevent CSV column breaking
+      const safeName = item.name ? item.name.replace(/,/g, '') : 'Unknown'; 
+      
+      return `${safeName},${item.barcode},${item.category || 'General'},${item.quantity},${item.mrp},${totalValue},${item.mfg_date || 'N/A'},${item.expiry_date || 'N/A'},${item.remaining_days || 0}`;
+    });
+
+    // Generate and download file
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    
+    // Names file with today's date automatically
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Kirana_Inventory_Report_${today}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -91,6 +127,12 @@ export default function InventoryList() {
                       <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(row.batch_id)}>
                         <Trash2 size={16} />
                       </button>
+                      <button 
+                      className="btn btn-success d-flex align-items-center" 
+                      onClick={handleExportReport}>
+                      <Download size={18} className="me-2" />
+                      Export Report
+                    </button>
                     </td>
                   </tr>
                 ))
