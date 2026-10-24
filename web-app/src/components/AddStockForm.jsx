@@ -10,8 +10,9 @@ export default function AddStockForm({ onClose, onRefresh }) {
   const [scannedTextHelper, setScannedTextHelper] = useState("");
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
 
+  // Added mfg_date and remaining_days to the global form state
   const [formData, setFormData] = useState({
-    barcode: '', name: '', category: 'General', mrp: '', batch_number: '', quantity: '', expiry_date: ''
+    barcode: '', name: '', category: 'General', mrp: '', batch_number: '', quantity: '', mfg_date: '', expiry_date: '', remaining_days: null
   });
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -48,7 +49,6 @@ export default function AddStockForm({ onClose, onRefresh }) {
     return () => { if (scanner) scanner.clear().catch(e => console.error(e)); };
   }, [isScanningBarcode]);
 
-  // NEW: Instantly compress massive mobile photos before sending to AI
   const compressAndProcessImage = (file) => {
     if (!file) return;
     setLoadingOcr(true);
@@ -61,7 +61,7 @@ export default function AddStockForm({ onClose, onRefresh }) {
       img.src = event.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800; // Perfect size for fast OCR
+        const MAX_WIDTH = 800; 
         const scaleSize = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scaleSize;
@@ -81,28 +81,20 @@ export default function AddStockForm({ onClose, onRefresh }) {
     try {
       const result = await scanProductImage(file);
       
-      if (result && result.success) {
-        setScannedTextHelper(`AI Found: ${result.expiry_date || "N/A"} | Raw Text: ${result.extracted_text.substring(0, 50)}...`);
+      // Look for the new backend keys: mfg_date and exp_date
+      if (result && (result.mfg_date || result.exp_date)) {
+        const rawText = result.text || result.extracted_text || "";
+        setScannedTextHelper(`AI Found: ${result.exp_date || "N/A"} | Raw Text: ${rawText.substring(0, 50)}...`);
 
-        if (result.expiry_date) {
-          let foundDate = result.expiry_date.trim();
-          const parts = foundDate.split(/[-/]/); 
-          
-          if (parts.length === 3) {
-            let d = parts[0].padStart(2, '0'), m = parts[1].padStart(2, '0'), y = parts[2];
-            if (y.length === 2) y = "20" + y; 
-            setFormData(prev => ({ ...prev, expiry_date: `${y}-${m}-${d}` }));
-          } else if (parts.length === 2) {
-            let month = parseInt(parts[1]) <= 12 ? parts[1] : parts[0];
-            let year = parseInt(parts[0]) > 12 ? parts[0] : parts[1];
-            if (year.length === 2) year = "20" + year;
-            setFormData(prev => ({ ...prev, expiry_date: `${year}-${month.padStart(2, '0')}-01` }));
-          } else {
-             alert(`The AI found an unusual date format: "${foundDate}". Please select the date manually.`);
-          }
-        }
+        // The backend already formatted them to YYYY-MM-DD, so just assign directly!
+        setFormData(prev => ({ 
+            ...prev, 
+            mfg_date: result.mfg_date || prev.mfg_date,
+            expiry_date: result.exp_date || prev.expiry_date,
+            remaining_days: result.remaining_days !== undefined ? result.remaining_days : prev.remaining_days
+        }));
       } else {
-        alert("Could not detect a clear date. Please type it manually.");
+        alert("Could not detect clear dates. Please type them manually.");
       }
     } catch (error) {
       alert("OCR failed. Check backend connection.");
@@ -197,8 +189,23 @@ export default function AddStockForm({ onClose, onRefresh }) {
                   {loadingOcr && <div className="alert alert-warning small mb-2 py-2">Scanning AI image... please wait.</div>}
                   {scannedTextHelper && <div className="alert alert-info py-2 small mb-2 shadow-sm"><strong>Scanner Result:</strong><br/>{scannedTextHelper}</div>}
                   
-                  <label className="form-label small fw-bold mt-2">Expiry Date (YYYY-MM-DD)</label>
-                  <input type="date" name="expiry_date" className="form-control bg-white" value={formData.expiry_date} onChange={handleChange} required />
+                  <div className="row mt-2">
+                      <div className="col-6">
+                          <label className="form-label small fw-bold">Mfg Date (YYYY-MM-DD)</label>
+                          <input type="date" name="mfg_date" className="form-control bg-white" value={formData.mfg_date} onChange={handleChange} />
+                      </div>
+                      <div className="col-6">
+                          <label className="form-label small fw-bold">Expiry Date (YYYY-MM-DD)</label>
+                          <input type="date" name="expiry_date" className="form-control bg-white" value={formData.expiry_date} onChange={handleChange} required />
+                      </div>
+                  </div>
+
+                  {formData.remaining_days !== null && (
+                      <div className={`alert mt-3 py-2 small fw-bold text-center ${formData.remaining_days > 0 ? 'alert-success' : 'alert-danger'}`}>
+                          Shelf Life: {formData.remaining_days > 0 ? `${formData.remaining_days} days remaining` : 'EXPIRED!'}
+                      </div>
+                  )}
+
                 </div>
               </div>
 
