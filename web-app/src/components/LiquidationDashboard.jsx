@@ -25,6 +25,25 @@ export default function LiquidationDashboard() {
     return { card: 'border-success', badge: 'bg-success', status: 'Healthy', action: 'Sell at MRP' };
   };
 
+
+  const sendWhatsAppOffer = (item, strategy) => {
+    let offerPrice = item.mrp;
+    let discountText = "";
+
+    if (strategy.action.includes("50%")) {
+      offerPrice = (item.mrp * 0.5).toFixed(2);
+      discountText = `(Flat 50% OFF!)`;
+    } else if (strategy.action.includes("20%")) {
+      offerPrice = (item.mrp * 0.8).toFixed(2);
+      discountText = `(Flat 20% OFF!)`;
+    }
+
+    const text = `🚨 *KIRANA FLASH SALE* 🚨\n\nGrab *${item.name}* before it runs out!\n\n❌ MRP: ₹${item.mrp}\n✅ Offer Price: ₹${offerPrice} ${discountText}\n📦 Stock available: ${item.quantity} units\n\nVisit our shop today to claim this deal!`;
+    
+    // Opens WhatsApp with the pre-filled message
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
   return (
     <div className="container mt-4">
       <h4 className="fw-bold mb-4 d-flex align-items-center text-danger">
@@ -39,6 +58,19 @@ export default function LiquidationDashboard() {
         <div className="row g-3">
           {items.map((item) => {
             const strategy = getLiquidationStrategy(item.remaining_days);
+
+            <div className="d-flex justify-content-end gap-2 mt-3">
+  {/* PASTE THE UPDATED BUTTON HERE */}
+  <button 
+    className="btn btn-outline-success btn-sm d-flex align-items-center" 
+    onClick={() => sendWhatsAppOffer(item, strategy)}
+  >
+    Offer on WA
+  </button>
+  
+  <button className="btn btn-outline-primary btn-sm">Sell 1</button>
+  <button className="btn btn-outline-danger btn-sm">Clear All</button>
+</div>
             
             return (
               <div key={item.id} className="col-12 col-md-6 col-lg-4">
