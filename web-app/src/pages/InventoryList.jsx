@@ -6,6 +6,7 @@ export default function InventoryList() {
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [exportStatus, setExportStatus] = useState("");
 
   const loadData = async () => {
     setLoading(true);
@@ -42,7 +43,6 @@ export default function InventoryList() {
     const rows = items.map(item => {
       const totalValue = (item.quantity * item.mrp).toFixed(2);
       const safeName = item.name ? item.name.replace(/,/g, '') : 'Unknown'; 
-      
       return `${safeName},${item.barcode},${item.category || 'General'},${item.quantity},${item.mrp},${totalValue},${item.mfg_date || 'N/A'},${item.expiry_date || 'N/A'},${item.remaining_days || 0}`;
     });
 
@@ -57,6 +57,10 @@ export default function InventoryList() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Show success message briefly
+    setExportStatus("✅ File Downloaded!");
+    setTimeout(() => setExportStatus(""), 3000);
   };
 
   return (
@@ -64,7 +68,9 @@ export default function InventoryList() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="fw-bold text-secondary mb-0">Store Inventory Catalog</h4>
         
-        <div className="d-flex gap-2">
+        <div className="d-flex align-items-center gap-3">
+          {exportStatus && <span className="text-success small fw-bold mb-0">{exportStatus}</span>}
+          
           <button 
             className="btn btn-success d-flex align-items-center" 
             onClick={handleExportReport}

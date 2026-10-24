@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { fetchExpiringInventory } from '../api/apiService';
-import { AlertTriangle, Tag, Trash2 } from 'lucide-react';
+import { AlertTriangle, Tag } from 'lucide-react';
 
 export default function LiquidationDashboard() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [confirmClearId, setConfirmClearId] = useState(null); // Controls the Yes/No UI
 
   useEffect(() => {
     loadExpiringStock();
@@ -17,7 +18,6 @@ export default function LiquidationDashboard() {
     setLoading(false);
   };
 
-  // Automated Discount Logic
   const getLiquidationStrategy = (days) => {
     if (days < 0) return { card: 'border-danger', badge: 'bg-danger', status: 'Expired', action: 'Dispose Immediately' };
     if (days <= 7) return { card: 'border-danger', badge: 'bg-danger', status: 'Critical', action: 'Liquidate @ 50% OFF' };
@@ -28,7 +28,6 @@ export default function LiquidationDashboard() {
   const sendWhatsAppOffer = (item, strategy) => {
     let offerPrice = item.mrp;
     let discountText = "";
-
     if (strategy.action.includes("50%")) {
       offerPrice = (item.mrp * 0.5).toFixed(2);
       discountText = `(Flat 50% OFF!)`;
@@ -36,30 +35,19 @@ export default function LiquidationDashboard() {
       offerPrice = (item.mrp * 0.8).toFixed(2);
       discountText = `(Flat 20% OFF!)`;
     }
-
-    const text = `🚨 *KIRANA FLASH SALE* 🚨\n\nGrab *${item.name}* before it runs out!\n\n❌ MRP: ₹${item.mrp}\n✅ Offer Price: ₹${offerPrice}${discountText}\n📦 Stock available: ${item.quantity} units\n\nVisit our shop today to claim this deal!`;
-    
-    // Opens WhatsApp with the pre-filled message
+    const text = `🚨 *KIRANA FLASH SALE* 🚨\n\nGrab *${item.name}* before it runs out!\n\n❌ MRP: ₹${item.mrp}\n✅ Offer Price: ₹${offerPrice} ${discountText}\n📦 Stock available: ${item.quantity} units\n\nVisit our shop today to claim this deal!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const handleSellOne = async (batchId) => {
-    // Ensure your backend API is called here, e.g.: await sellInventoryUnit(batchId, 1);
-    
-    // Updates the UI instantly without refreshing the page
     setItems(prevItems => prevItems.map(item => 
       item.id === batchId ? { ...item, quantity: item.quantity - 1 } : item
     ).filter(item => item.quantity > 0));
   };
 
-  const handleClearAll = async (batchId) => {
-    const isConfirmed = window.confirm("Shall I clear all?");
-    if (isConfirmed) {
-      // Ensure your backend API is called here, e.g.: await clearInventoryBatch(batchId);
-      
-      // Removes the item from the UI instantly
-      setItems(prevItems => prevItems.filter(item => item.id !== batchId));
-    }
+  const executeClearAll = async (batchId) => {
+    setItems(prevItems => prevItems.filter(item => item.id !== batchId));
+    setConfirmClearId(null); 
   };
 
   return (
@@ -76,19 +64,20 @@ export default function LiquidationDashboard() {
         <div className="row g-3">
           {items.map((item) => {
             const strategy = getLiquidationStrategy(item.remaining_days);
-            
             return (
               <div key={item.id} className="col-12 col-md-6 col-lg-4">
-                <div className={`card h-100 shadow-sm ${strategy.card}`}> <div className="card-body"> <div className="d-flex justify-content-between align-items-start mb-2"> <h5 className="card-title fw-bold mb-0">{item.name}</h5> <span className={`badge ${strategy.badge}`}>{strategy.status}</span>
+                <div className={`card h-100 shadow-sm ${strategy.card}`}>
+                  <div className="card-body">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <h5 className="card-title fw-bold mb-0">{item.name}</h5>
+                      <span className={`badge ${strategy.badge}`}>{strategy.status}</span>
                     </div>
                     <p className="text-muted small mb-3">Barcode: {item.barcode}</p>
-                    
                     <ul className="list-unstyled mb-3 small">
                       <li><strong>Stock:</strong> {item.quantity} units</li>
                       <li><strong>Expires:</strong> {item.expiry_date}</li>
                       <li><strong>Remaining:</strong> {item.remaining_days} days</li>
                     </ul>
-
                     <div className="p-2 bg-light rounded border d-flex align-items-center justify-content-between">
                       <span className="fw-bold small text-primary">
                         <Tag size={14} className="me-1" /> Action:
@@ -97,16 +86,21 @@ export default function LiquidationDashboard() {
                     </div>
 
                     <div className="d-flex justify-content-end gap-2 mt-3">
-                      <button 
-                        className="btn btn-outline-success btn-sm d-flex align-items-center" 
-                        onClick={() => sendWhatsAppOffer(item, strategy)}
-                      >
+                      <button className="btn btn-outline-success btn-sm d-flex align-items-center" onClick={() => sendWhatsAppOffer(item, strategy)}>
                         Offer on WA
                       </button>
                       <button className="btn btn-outline-primary btn-sm" onClick={() => handleSellOne(item.id)}>Sell 1</button>
-                      <button className="btn btn-outline-danger btn-sm" onClick={() => handleClearAll(item.id)}>Clear All</button>
+                      
+                      {confirmClearId === item.id ? (
+                        <div className="d-flex gap-1 align-items-center bg-light p-1 rounded border border-danger">
+                          <span className="small text-danger fw-bold ms-1 me-1">Clear all?</span>
+                          <button className="btn btn-danger btn-sm px-2 py-0" onClick={() => executeClearAll(item.id)}>Yes</button>
+                          <button className="btn btn-secondary btn-sm px-2 py-0" onClick={() => setConfirmClearId(null)}>No</button>
+                        </div>
+                      ) : (
+                        <button className="btn btn-outline-danger btn-sm" onClick={() => setConfirmClearId(item.id)}>Clear All</button>
+                      )}
                     </div>
-
                   </div>
                 </div>
               </div>
