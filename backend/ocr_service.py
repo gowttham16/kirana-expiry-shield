@@ -24,10 +24,17 @@ def format_to_iso(date_str):
 
 def extract_expiry_date(image_bytes: bytes) -> dict:
     try:
+        # Reverted to Engine 1 (best for natural photos) and added auto-orientation
         response = requests.post(
             'https://api.ocr.space/parse/image',
             files={'file': ('image.jpg', image_bytes, 'image/jpeg')},
-            data={'apikey': 'helloworld', 'language': 'eng', 'scale': 'true', 'isTable': 'true'},
+            data={
+                'apikey': 'helloworld', 
+                'language': 'eng', 
+                'scale': 'true', 
+                'OCREngine': '1',
+                'detectOrientation': 'true'
+            },
             timeout=15
         )
         result = response.json()
