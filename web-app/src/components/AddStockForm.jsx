@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Camera, Save, Search, ScanBarcode, ScanText, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Camera, Save, Search, ScanBarcode, ScanText, Image as ImageIcon, Crop as CropIcon } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import ReactCrop from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { scanProductImage, addInventoryBatch, getProductByBarcode } from '../api/apiService';
 
 export default function AddStockForm({ onClose, onRefresh }) {
@@ -10,7 +12,12 @@ export default function AddStockForm({ onClose, onRefresh }) {
   const [scannedTextHelper, setScannedTextHelper] = useState("");
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
 
-  // Added mfg_date and remaining_days to the global form state
+  // Cropper State
+  const [imgSrc, setImgSrc] = useState('');
+  const [crop, setCrop] = useState();
+  const [completedCrop, setCompletedCrop] = useState(null);
+  const imgRef = useRef(null);
+
   const [formData, setFormData] = useState({
     barcode: '', name: '', category: 'General', mrp: '', batch_number: '', quantity: '', mfg_date: '', expiry_date: '', remaining_days: null
   });
@@ -20,13 +27,10 @@ export default function AddStockForm({ onClose, onRefresh }) {
   const handleBarcodeLookup = async (scannedCode = null) => {
     const codeToSearch = typeof scannedCode === 'string' ? scannedCode : formData.barcode;
     if (!codeToSearch) return;
-    
     setLookingUp(true);
     const result = await getProductByBarcode(codeToSearch);
     if (result && result.exists) {
-      setFormData(prev => ({
-        ...prev, barcode: codeToSearch, name: result.product.name, mrp: result.product.mrp, category: result.product.category || 'General'
-      }));
+      setFormData(prev => ({ ...prev, barcode: codeToSearch, name: result.product.name, mrp: result.product.mrp, category: result.product.category || 'General' }));
     } else if (typeof scannedCode === 'string') {
       setFormData(prev => ({ ...prev, barcode: codeToSearch }));
     }
@@ -37,56 +41,61 @@ export default function AddStockForm({ onClose, onRefresh }) {
     let scanner = null;
     if (isScanningBarcode) {
       scanner = new Html5QrcodeScanner("barcode-reader", { fps: 10, qrbox: { width: 250, height: 100 } }, false);
-      scanner.render(
-        (decodedText) => {
-          scanner.clear();
-          setIsScanningBarcode(false);
-          handleBarcodeLookup(decodedText);
-        },
-        (error) => {}
-      );
+      scanner.render((decodedText) => {
+        scanner.clear();
+        setIsScanningBarcode(false);
+        handleBarcodeLookup(decodedText);
+      }, () => {});
     }
-    return () => { if (scanner) scanner.clear().catch(e => console.error(e)); };
+    return () => { if (scanner) scanner.clear().catch(() => {}); };
   }, [isScanningBarcode]);
 
-  const compressAndProcessImage = (file) => {
-    if (!file) return;
+  // Load image into the cropper instead of sending immediately
+  const onSelectFile = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setCrop(undefined);
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''));
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  // Generate cropped image and send to backend
+  const confirmCrop = () => {
+    if (!completedCrop || !imgRef.current) return;
     setLoadingOcr(true);
     setScannedTextHelper(""); 
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800; 
-        const scaleSize = MAX_WIDTH / img.width;
-        canvas.width = MAX_WIDTH;
-        canvas.height = img.height * scaleSize;
-        
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        canvas.toBlob(async (blob) => {
-          const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
-          await processOcrImage(compressedFile);
-        }, 'image/jpeg', 0.8);
-      };
-    };
+    const image = imgRef.current;
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = completedCrop.width;
+    canvas.height = completedCrop.height;
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(
+      image,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0, 0, completedCrop.width, completedCrop.height
+    );
+
+    canvas.toBlob(async (blob) => {
+      const croppedFile = new File([blob], "cropped_date.jpg", { type: 'image/jpeg' });
+      setImgSrc(''); // Hide cropper modal
+      await processOcrImage(croppedFile);
+    }, 'image/jpeg', 0.9);
   };
 
   const processOcrImage = async (file) => {
     try {
       const result = await scanProductImage(file);
-      
-      // Look for the new backend keys: mfg_date and exp_date
       if (result && (result.mfg_date || result.exp_date)) {
-        const rawText = result.text || result.extracted_text || "";
+        const rawText = result.text || "";
         setScannedTextHelper(`AI Found: ${result.exp_date || "N/A"} | Raw Text: ${rawText.substring(0, 50)}...`);
-
-        // The backend already formatted them to YYYY-MM-DD, so just assign directly!
         setFormData(prev => ({ 
             ...prev, 
             mfg_date: result.mfg_date || prev.mfg_date,
@@ -94,7 +103,7 @@ export default function AddStockForm({ onClose, onRefresh }) {
             remaining_days: result.remaining_days !== undefined ? result.remaining_days : prev.remaining_days
         }));
       } else {
-        alert("Could not detect clear dates. Please type them manually.");
+        alert("Could not detect clear dates in that cropped area. Please type them manually.");
       }
     } catch (error) {
       alert("OCR failed. Check backend connection.");
@@ -106,8 +115,7 @@ export default function AddStockForm({ onClose, onRefresh }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = { ...formData, mrp: parseFloat(formData.mrp), quantity: parseInt(formData.quantity) };
-      await addInventoryBatch(payload);
+      await addInventoryBatch({ ...formData, mrp: parseFloat(formData.mrp), quantity: parseInt(formData.quantity) });
       onRefresh(); 
       onClose();   
     } catch (error) {
@@ -126,29 +134,39 @@ export default function AddStockForm({ onClose, onRefresh }) {
           </div>
           
           <div className="modal-body p-4">
-            {isScanningBarcode && (
-              <div className="mb-4">
-                <div id="barcode-reader" className="w-100 overflow-hidden rounded border border-2 border-primary"></div>
-                <button type="button" className="btn btn-sm btn-danger w-100 mt-2" onClick={() => setIsScanningBarcode(false)}>
-                  Cancel Barcode Scanner
-                </button>
+            
+            {/* Cropper Overlay */}
+            {imgSrc && (
+              <div className="position-absolute top-0 start-0 w-100 h-100 bg-white z-3 p-3 d-flex flex-column align-items-center">
+                <h6 className="fw-bold mb-3"><CropIcon size={18} className="me-2"/>Crop exactly around the dates</h6>
+                <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
+                    <ReactCrop crop={crop} onChange={(_, percentCrop) => setCrop(percentCrop)} onComplete={(c) => setCompletedCrop(c)}>
+                        <img ref={imgRef} src={imgSrc} alt="Crop me" style={{ maxWidth: '100%' }} />
+                    </ReactCrop>
+                </div>
+                <div className="d-flex gap-2 mt-3 w-100">
+                    <button className="btn btn-secondary flex-grow-1" onClick={() => setImgSrc('')}>Cancel</button>
+                    <button className="btn btn-primary flex-grow-1" onClick={confirmCrop}>Scan Cropped Area</button>
+                </div>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ display: isScanningBarcode ? 'none' : 'block' }}>
+            {isScanningBarcode && (
+              <div className="mb-4">
+                <div id="barcode-reader" className="w-100 overflow-hidden rounded border border-2 border-primary"></div>
+                <button type="button" className="btn btn-sm btn-danger w-100 mt-2" onClick={() => setIsScanningBarcode(false)}>Cancel Barcode Scanner</button>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} style={{ display: isScanningBarcode || imgSrc ? 'none' : 'block' }}>
               <div className="row g-3">
                 <div className="col-12">
                   <label className="form-label small fw-bold">Barcode</label>
                   <div className="input-group">
                     <input type="text" name="barcode" className="form-control" value={formData.barcode} onChange={handleChange} onBlur={handleBarcodeLookup} required />
-                    <button type="button" className="btn btn-outline-secondary" onClick={handleBarcodeLookup} disabled={lookingUp}>
-                      <Search size={16} className={lookingUp ? "text-muted" : "text-primary"} />
-                    </button>
-                    <button type="button" className="btn btn-primary" onClick={() => setIsScanningBarcode(true)} title="Live Scan Barcode">
-                      <ScanBarcode size={16} className="text-white" />
-                    </button>
+                    <button type="button" className="btn btn-outline-secondary" onClick={handleBarcodeLookup} disabled={lookingUp}><Search size={16} /></button>
+                    <button type="button" className="btn btn-primary" onClick={() => setIsScanningBarcode(true)}><ScanBarcode size={16} className="text-white" /></button>
                   </div>
-                  {lookingUp && <small className="text-primary">Searching catalog...</small>}
                 </div>
 
                 <div className="col-12">
@@ -166,27 +184,21 @@ export default function AddStockForm({ onClose, onRefresh }) {
                 
                 <div className="col-12 mt-4 p-3 bg-light rounded border">
                   <label className="form-label small fw-bold d-flex align-items-center text-primary mb-3">
-                    <ScanText size={18} className="me-2" />
-                    Auto-Extract Expiry Date
+                    <ScanText size={18} className="me-2" /> Auto-Extract Expiry Date
                   </label>
                   
                   <div className="d-flex gap-2 mb-3">
                     <div className="flex-grow-1 position-relative">
-                      <input type="file" accept="image/*" capture="environment" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer', zIndex: 10 }} onChange={(e) => compressAndProcessImage(e.target.files[0])} />
-                      <button type="button" className="btn btn-primary w-100 d-flex align-items-center justify-content-center shadow-sm">
-                        <Camera size={18} className="me-2" /> Use Camera
-                      </button>
+                      <input type="file" accept="image/*" capture="environment" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer', zIndex: 10 }} onChange={onSelectFile} />
+                      <button type="button" className="btn btn-primary w-100 shadow-sm"><Camera size={18} className="me-2" /> Use Camera</button>
                     </div>
-
                     <div className="flex-grow-1 position-relative">
-                      <input type="file" accept="image/*" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer', zIndex: 10 }} onChange={(e) => compressAndProcessImage(e.target.files[0])} />
-                      <button type="button" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center bg-white shadow-sm">
-                        <ImageIcon size={18} className="me-2" /> Gallery
-                      </button>
+                      <input type="file" accept="image/*" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer', zIndex: 10 }} onChange={onSelectFile} />
+                      <button type="button" className="btn btn-outline-secondary w-100 bg-white shadow-sm"><ImageIcon size={18} className="me-2" /> Gallery</button>
                     </div>
                   </div>
                   
-                  {loadingOcr && <div className="alert alert-warning small mb-2 py-2">Scanning AI image... please wait.</div>}
+                  {loadingOcr && <div className="alert alert-warning small mb-2 py-2">Scanning cropped area... please wait.</div>}
                   {scannedTextHelper && <div className="alert alert-info py-2 small mb-2 shadow-sm"><strong>Scanner Result:</strong><br/>{scannedTextHelper}</div>}
                   
                   <div className="row mt-2">
@@ -205,16 +217,12 @@ export default function AddStockForm({ onClose, onRefresh }) {
                           Shelf Life: {formData.remaining_days > 0 ? `${formData.remaining_days} days remaining` : 'EXPIRED!'}
                       </div>
                   )}
-
                 </div>
               </div>
 
               <div className="mt-4 d-flex justify-content-end gap-2">
                 <button type="button" className="btn btn-light" onClick={onClose}>Cancel</button>
-                <button type="submit" className="btn btn-success d-flex align-items-center" disabled={saving || loadingOcr}>
-                  <Save size={18} className="me-2" />
-                  {saving ? "Saving..." : "Save Stock"}
-                </button>
+                <button type="submit" className="btn btn-success" disabled={saving || loadingOcr}><Save size={18} className="me-2" /> Save Stock</button>
               </div>
             </form>
           </div>
