@@ -52,8 +52,6 @@ def get_all_inventory():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-
 @app.get("/api/inventory/expiring")
 def get_expiring_inventory():
     print("📡 DASHBOARD: Asking Supabase for inventory...")
@@ -185,53 +183,3 @@ def get_product_by_barcode(barcode: str):
     if not response.data:
         return {"exists": False, "product": None}
     return {"exists": True, "product": response.data[0]}
-
-
-from datetime import datetime, timedelta
-
-@app.get("/api/inventory/expiring")
-def get_expiring_inventory():
-    try:
-        # Calculate the date 30 days from today
-        today = datetime.now().date()
-        threshold_date = today + timedelta(days=30)
-        
-        # Query Supabase for items expiring on or before the threshold
-        response = supabase.table("inventory") \
-            .select("*") \
-            .lte("expiry_date", str(threshold_date)) \
-            .order("expiry_date") \
-            .execute()
-        
-        # Calculate live remaining days for the frontend
-        data = response.data
-        for item in data:
-            if item.get('expiry_date'):
-                exp_dt = datetime.strptime(item['expiry_date'], "%Y-%m-%d").date()
-                item['remaining_days'] = (exp_dt - today).days
-
-        return {"success": True, "data": data}
-    except Exception as e:
-        return {"success": False, "error": str(e), "data": []}
-
-
-
-
-@app.patch("/api/inventory/batch/{batch_id}/sell")
-def sell_inventory_unit(batch_id: int, quantity: int = 1):
-    try:
-        item = supabase.table("inventory").select("quantity").eq("id", batch_id).execute()
-        if not item.data:
-            return {"success": False, "message": "Item not found"}
-            
-        current_qty = item.data[0]['quantity']
-        new_qty = max(0, current_qty - quantity)
-        
-        if new_qty == 0:
-            supabase.table("inventory").delete().eq("id", batch_id).execute()
-        else:
-            supabase.table("inventory").update({"quantity": new_qty}).eq("id", batch_id).execute()
-            
-        return {"success": True, "new_quantity": new_qty}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
