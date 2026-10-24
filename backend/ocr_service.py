@@ -3,37 +3,41 @@ import re
 from datetime import datetime
 
 def format_to_iso(date_str):
-    """Cleans spaced-out OCR dates (24 / 07 / 26) into YYYY-MM-DD"""
+    """Aggressively strips noise and formats to YYYY-MM-DD"""
     try:
-        clean = re.sub(r'[\s\.\-]', '/', date_str.strip())
+        # Strip all letters/noise that might have been captured
+        clean = re.sub(r'[^\d/\-\.]', '', date_str)
+        clean = re.sub(r'[\.\-]', '/', clean)
         parts = [p for p in clean.split('/') if p]
         
         if len(parts) == 3:
             d, m, y = parts
             if len(y) == 2: y = f"20{y}"
             return f"{y}-{m.zfill(2)}-{d.zfill(2)}"
-        elif len(parts) == 2:
-            m, y = parts
-            if len(y) == 2: y = f"20{y}"
-            return f"{y}-{m.zfill(2)}-28"
     except:
         pass
     return ""
 
 def extract_expiry_date(image_bytes: bytes) -> dict:
     try:
-        # Engine 2 is strictly for numbers, receipts, and tables
         response = requests.post(
             'https://api.ocr.space/parse/image',
             files={'file': ('image.jpg', image_bytes, 'image/jpeg')},
-            data={'apikey': 'helloworld', 'language': 'eng', 'scale': 'true', 'OCREngine': '2'},
+            data={
+                'apikey': 'helloworld', 
+                'language': 'eng', 
+                'scale': 'true', 
+                'isTable': 'true', # Forces horizontal reading alignment
+                'OCREngine': '1'
+            },
             timeout=15
         )
         res = response.json()
         text = res['ParsedResults'][0]['ParsedText'] if res.get('ParsedResults') else ""
         
-        # Forgiving Regex: Catches numbers even if OCR adds spaces (e.g. 24 / 07 / 2026)
-        pattern = r'\b\d{2}\s*[/\-\.]\s*\d{2}\s*[/\-\.]\s*(?:20)?\d{2}\b'
+        # Bulletproof Regex: No word boundaries (\b). 
+        # It will extract 19/08/26 even if the OCR reads it as "XYZ19/08/26ABC"
+        pattern = r'(\d{2}[\s/\-\.]+\d{2}[\s/\-\.]+(?:20)?\d{2})'
         matches = re.findall(pattern, text)
         
         mfg_date, exp_date = "", ""
@@ -45,7 +49,10 @@ def extract_expiry_date(image_bytes: bytes) -> dict:
             
         remaining_days = 0
         if exp_date:
-            remaining_days = (datetime.strptime(exp_date, "%Y-%m-%d") - datetime.now()).days
+            try:
+                remaining_days = (datetime.strptime(exp_date, "%Y-%m-%d") - datetime.now()).days
+            except:
+                pass
 
         return {
             "text": text.strip(),
