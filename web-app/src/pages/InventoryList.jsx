@@ -11,7 +11,7 @@ export default function InventoryList() {
   const loadData = async () => {
     setLoading(true);
     const data = await fetchAllInventory();
-    setItems(data);
+    setItems(data || []);
     setLoading(false);
   };
 
@@ -27,9 +27,8 @@ export default function InventoryList() {
   };
 
   const filtered = items.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase()) ||
-    i.barcode.includes(search) ||
-    i.category.toLowerCase().includes(search.toLowerCase())
+    (i.name && i.name.toLowerCase().includes(search.toLowerCase())) ||
+    (i.barcode && i.barcode.includes(search))
   );
 
   const handleExportReport = () => {
@@ -38,12 +37,11 @@ export default function InventoryList() {
       return;
     }
 
-    const headers = ["Product Name,Barcode,Category,Stock Quantity,MRP (Rs),Total Value (Rs),Mfg Date,Expiry Date,Shelf Life (Days)"];
+    const headers = ["Product Name,Barcode,Category,Stock Quantity,MRP (Rs),Total Value (Rs),Expiry Date,Days Left"];
     
     const rows = items.map(item => {
-      const totalValue = (item.quantity * item.mrp).toFixed(2);
       const safeName = item.name ? item.name.replace(/,/g, '') : 'Unknown'; 
-      return `${safeName},${item.barcode},${item.category || 'General'},${item.quantity},${item.mrp},${totalValue},${item.mfg_date || 'N/A'},${item.expiry_date || 'N/A'},${item.remaining_days || 0}`;
+      return `${safeName},${item.barcode},${item.category || 'General'},${item.quantity},${item.mrp},${item.total_value},${item.expiry_date},${item.days_left}`;
     });
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
@@ -58,7 +56,6 @@ export default function InventoryList() {
     link.click();
     document.body.removeChild(link);
 
-    // Show success message briefly
     setExportStatus("✅ File Downloaded!");
     setTimeout(() => setExportStatus(""), 3000);
   };
@@ -71,23 +68,14 @@ export default function InventoryList() {
         <div className="d-flex align-items-center gap-3">
           {exportStatus && <span className="text-success small fw-bold mb-0">{exportStatus}</span>}
           
-          <button 
-            className="btn btn-success d-flex align-items-center" 
-            onClick={handleExportReport}
-          >
+          <button className="btn btn-success d-flex align-items-center" onClick={handleExportReport}>
             <Download size={18} className="me-2" />
             Export Report
           </button>
 
           <div className="input-group" style={{ maxWidth: '320px' }}>
             <span className="input-group-text bg-white"><Search size={16} /></span>
-            <input 
-              type="text" 
-              className="form-control" 
-              placeholder="Search name, barcode..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <input type="text" className="form-control" placeholder="Search name, barcode..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
       </div>
@@ -110,13 +98,9 @@ export default function InventoryList() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan="9" className="text-center py-4 text-muted">Loading inventory data...</td>
-                </tr>
+                <tr><td colSpan="9" className="text-center py-4 text-muted">Loading inventory data...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="text-center py-4 text-muted">No matching inventory items found.</td>
-                </tr>
+                <tr><td colSpan="9" className="text-center py-4 text-muted">No matching inventory items found.</td></tr>
               ) : (
                 filtered.map((row) => (
                   <tr key={row.batch_id}>
