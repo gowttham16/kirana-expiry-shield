@@ -1,115 +1,96 @@
 import React, { useState } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle, Check, MinusCircle, MessageCircle } from 'lucide-react';
-import { deleteInventoryBatch, sellBatchUnit } from '../api/apiService.js';
+import { Tag } from 'lucide-react';
 
 export default function AlertCard({ item, onRefresh }) {
-  const [loadingAction, setLoadingAction] = useState(false);
+  // Local state just for this specific card's Yes/No confirmation
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  let statusColor = "success";
-  let Icon = CheckCircle;
-  let badgeBg = "bg-success";
-  
-  if (item.status === 'CRITICAL' || item.status === 'EXPIRED') {
-    statusColor = "danger";
-    Icon = AlertCircle;
-    badgeBg = "bg-danger text-white";
-  } else if (item.status === 'WARNING') {
-    statusColor = "warning";
-    Icon = AlertTriangle;
-    badgeBg = "bg-warning text-dark";
-  }
+  const sendWhatsAppOffer = () => {
+    let offerPrice = item.potential_loss_rupees / item.quantity;
+    let discountText = "";
+    if (item.action.includes("50%")) {
+      offerPrice = (offerPrice * 0.5).toFixed(2);
+      discountText = `(Flat 50% OFF!)`;
+    } else if (item.action.includes("20%")) {
+      offerPrice = (offerPrice * 0.8).toFixed(2);
+      discountText = `(Flat 20% OFF!)`;
+    }
+    const text = `🚨 *KIRANA FLASH SALE* 🚨\n\nGrab *${item.product_name}* before it runs out!\n✅ Offer Price: ₹${offerPrice} ${discountText}\n📦 Stock available: ${item.quantity} units\n\nVisit our shop today to claim this deal!`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
 
   const handleSellOne = async () => {
-    setLoadingAction(true);
-    await sellBatchUnit(item.batch_id, 1);
-    setLoadingAction(false);
-    onRefresh();
-  };
-
-  const handleClear = async () => {
-    setLoadingAction(true);
-    await deleteInventoryBatch(item.batch_id);
-    setLoadingAction(false);
-    onRefresh();
-  };
-
-  const shareOnWhatsApp = () => {
-    if (item.status === 'EXPIRED') {
-      alert("This item is already expired. It should be discarded, not sold.");
-      return;
+    try {
+      await fetch(`https://kirana-expiry-shield.onrender.com/api/inventory/batch/${item.batch_id}/sell?quantity=1`, { method: 'PATCH' });
+      if (onRefresh) onRefresh(); // Refresh dashboard data instantly
+    } catch (error) {
+      console.error("Sell error:", error);
     }
-
-    const basePrice = Math.round(item.potential_loss_rupees / item.quantity);
-    
-    // Dynamically apply discounts based on the backend risk logic
-    let discountPercent = 10; // Default 10%
-    if (item.status === 'CRITICAL') discountPercent = 50;
-    else if (item.status === 'WARNING') discountPercent = 20;
-
-    const offerPrice = (basePrice * (1 - (discountPercent / 100))).toFixed(2);
-    
-    // Format the marketing copy with emojis for WhatsApp
-    const text = `🚨 *Kirana Special Offer!* 🚨%0A%0AGet *${item.product_name}* at ${discountPercent}% OFF!%0A%0A📉 Original MRP: ₹${basePrice}%0A🔥 *Offer Price: ₹${offerPrice}*%0A📦 Only ${item.quantity} left in stock.%0A%0AHurry before it's gone! Message us to reserve yours.`;
-    
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
+
+  const executeClearAll = async () => {
+    try {
+      await fetch(`https://kirana-expiry-shield.onrender.com/api/inventory/batch/${item.batch_id}`, { method: 'DELETE' });
+      setShowConfirm(false);
+      if (onRefresh) onRefresh(); // Refresh dashboard data instantly
+    } catch (error) {
+      console.error("Clear error:", error);
+    }
+  };
+
+  const cardColor = item.days_left < 0 ? 'border-danger' : item.days_left <= 7 ? 'border-danger' : 'border-warning';
+  const badgeColor = item.days_left < 0 ? 'bg-danger' : item.days_left <= 7 ? 'bg-danger' : 'bg-warning text-dark';
 
   return (
-    <div className={`card shadow-sm border-0 border-start border-${statusColor} border-5 mb-3`}>
-      <div className="card-body d-flex flex-wrap justify-content-between align-items-center p-4 gap-3">
+    <div className={`card shadow-sm mb-3 border-0 border-start ${cardColor} border-4`}>
+      <div className="card-body">
+        <div className="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h5 className="card-title fw-bold mb-0">{item.product_name}</h5>
+            <p className="text-muted small mb-1">Barcode: {item.barcode}</p>
+          </div>
+          <span className={`badge ${badgeColor}`}>{item.status}</span>
+        </div>
         
-        <div>
-          <h5 className="card-title fw-bold mb-1 text-dark">
-            {item.product_name}
-          </h5>
-          <p className="card-text text-muted small mb-2">
-            Barcode: <code>{item.barcode}</code> &nbsp;|&nbsp; 
-            Batch: {item.batch_id.slice(0, 8)} &nbsp;|&nbsp; 
-            Stock: <span className="badge bg-secondary">{item.quantity}</span>
-          </p>
-          <div className={`d-flex align-items-center text-${statusColor} fw-semibold`}>
-            <Icon className="me-2" size={20} />
-            {item.days_left < 0 ? `Expired ${Math.abs(item.days_left)} days ago` : `${item.days_left} Days Left`}
+        <div className="row small mb-3">
+          <div className="col-4">
+            <strong>Stock:</strong> {item.quantity} units
+          </div>
+          <div className="col-4">
+            <strong>Remaining:</strong> {item.days_left} days
+          </div>
+          <div className="col-4 text-danger">
+            <strong>Risk:</strong> ₹{item.potential_loss_rupees}
           </div>
         </div>
 
-        <div className="text-end d-flex flex-column align-items-end">
-          <p className="text-muted small mb-0">Capital at Risk</p>
-          <h4 className="fw-bold text-dark mb-2">₹{item.potential_loss_rupees}</h4>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <div className="d-flex align-items-center bg-light px-2 py-1 rounded border">
+            <Tag size={14} className="me-1 text-primary" />
+            <span className="fw-bold text-dark small">{item.action}</span>
+          </div>
           
-          <div className="d-flex flex-wrap gap-2 mt-1">
-            {/* WhatsApp Liquidation Trigger */}
-            <button 
-              className={`btn btn-sm fw-bold d-flex align-items-center shadow-sm ${item.status === 'EXPIRED' ? 'btn-outline-secondary' : 'btn-outline-success'}`}
-              onClick={shareOnWhatsApp}
-              title={item.status === 'EXPIRED' ? "Cannot share expired items" : "Share discount offer via WhatsApp"}
-            >
-              <MessageCircle size={15} className="me-1" />
+          <div className="d-flex gap-2">
+            <button className="btn btn-outline-success btn-sm" onClick={sendWhatsAppOffer}>
               Offer on WA
             </button>
-
-            {/* Sell -1 Unit */}
-            <button 
-              className="btn btn-sm btn-outline-primary fw-bold d-flex align-items-center shadow-sm"
-              onClick={handleSellOne}
-              disabled={loadingAction}
-            >
-              <MinusCircle size={15} className="me-1" />
+            <button className="btn btn-outline-primary btn-sm" onClick={handleSellOne}>
               Sell 1
             </button>
-
-            {/* Clear Entire Batch */}
-            <button 
-              className="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold d-flex align-items-center shadow-sm"
-              onClick={handleClear}
-              disabled={loadingAction}
-            >
-              <Check size={15} className="me-1" />
-              Clear All
-            </button>
+            
+            {showConfirm ? (
+              <div className="d-flex gap-1 align-items-center bg-light p-1 rounded border border-danger">
+                <span className="small text-danger fw-bold ms-1 me-1">Clear?</span>
+                <button className="btn btn-danger btn-sm px-2 py-0" onClick={executeClearAll}>Yes</button>
+                <button className="btn btn-secondary btn-sm px-2 py-0" onClick={() => setShowConfirm(false)}>No</button>
+              </div>
+            ) : (
+              <button className="btn btn-outline-danger btn-sm" onClick={() => setShowConfirm(true)}>
+                Clear All
+              </button>
+            )}
           </div>
         </div>
-
       </div>
     </div>
   );

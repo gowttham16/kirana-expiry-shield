@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { ShieldAlert, Package, LayoutDashboard } from 'lucide-react';
+import { ShieldAlert, Package, LayoutDashboard, Sun, Moon } from 'lucide-react';
 
 export default function TopNav({ onOpenModal }) {
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-4 py-3 shadow-sm">
       <div className="container-fluid">
@@ -28,7 +37,14 @@ export default function TopNav({ onOpenModal }) {
             All Inventory
           </NavLink>
 
-          {/* This simply opens your modal now! */}
+          <button 
+            className="btn btn-sm btn-outline-light d-flex align-items-center" 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            title="Toggle Dark Mode"
+          >
+            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
           <button className="btn btn-sm btn-success fw-semibold ms-2" onClick={onOpenModal}>
             + Scan New Stock
           </button>

@@ -19,7 +19,7 @@ export default function LiquidationDashboard() {
   };
 
   const sendWhatsAppOffer = (item) => {
-    let offerPrice = item.potential_loss_rupees / item.quantity; // Base MRP
+    let offerPrice = item.potential_loss_rupees / item.quantity;
     let discountText = "";
     if (item.action.includes("50%")) {
       offerPrice = (offerPrice * 0.5).toFixed(2);
@@ -32,7 +32,6 @@ export default function LiquidationDashboard() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
-  // REAL API CALL TO RENDER BACKEND
   const handleSellOne = async (batchId) => {
     try {
       await fetch(`https://kirana-expiry-shield.onrender.com/api/inventory/batch/${batchId}/sell?quantity=1`, { method: 'PATCH' });
@@ -44,7 +43,6 @@ export default function LiquidationDashboard() {
     }
   };
 
-  // REAL API CALL TO RENDER BACKEND
   const executeClearAll = async (batchId) => {
     try {
       await fetch(`https://kirana-expiry-shield.onrender.com/api/inventory/batch/${batchId}`, { method: 'DELETE' });

@@ -1,130 +1,137 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Download, Package } from 'lucide-react';
-import { fetchAllInventory } from '../api/apiService';
+import React, { useEffect, useState } from 'react';
+import { fetchAllInventory, deleteInventoryBatch } from '../api/apiService';
+import { Search, Trash2, Download, AlertCircle } from 'lucide-react';
 
 export default function AllInventory() {
-  const [inventory, setInventory] = useState([]);
+  const [items, setItems] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [exportStatus, setExportStatus] = useState("");
+  const [showLowStock, setShowLowStock] = useState(false);
 
-  useEffect(() => {
-    loadInventory();
-  }, []);
-
-  const loadInventory = async () => {
+  const loadData = async () => {
     setLoading(true);
     const data = await fetchAllInventory();
-    setInventory(data);
+    setItems(data || []);
     setLoading(false);
   };
 
-  // Live search filter matching name or barcode
-  const filteredInventory = inventory.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.barcode.includes(searchTerm)
-  );
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  // One-Click CSV Export Logic
-  const exportToCSV = () => {
-    const headers = ["Batch ID,Barcode,Product Name,Category,MRP,Quantity,Expiry Date,Days Left,Total Value (Rs)"];
-    const rows = filteredInventory.map(item => 
-      `${item.batch_id},${item.barcode},"${item.name}",${item.category},${item.mrp},${item.quantity},${item.expiry_date},${item.days_left},${item.total_value}`
-    );
-    
+  const handleDelete = async (batchId) => {
+    if (window.confirm("Remove this batch from store records?")) {
+      await deleteInventoryBatch(batchId);
+      loadData();
+    }
+  };
+
+  const filtered = items.filter(i => {
+    const matchesSearch = (i.name && i.name.toLowerCase().includes(search.toLowerCase())) || (i.barcode && i.barcode.includes(search));
+    const matchesStock = showLowStock ? i.quantity < 5 : true;
+    return matchesSearch && matchesStock;
+  });
+
+  const handleExportReport = () => {
+    if (!items || items.length === 0) {
+      alert("No inventory data to export.");
+      return;
+    }
+
+    const headers = ["Product Name,Barcode,Category,Stock Quantity,MRP (Rs),Total Value (Rs),Expiry Date,Days Left"];
+    const rows = items.map(item => {
+      const safeName = item.name ? item.name.replace(/,/g, '') : 'Unknown'; 
+      return `${safeName},${item.barcode},${item.category || 'General'},${item.quantity},${item.mrp},${item.total_value},${item.expiry_date},${item.days_left}`;
+    });
+
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "kirana_inventory_report.csv");
+    link.setAttribute("download", `Kirana_Inventory_Report_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    setExportStatus("✅ File Downloaded!");
+    setTimeout(() => setExportStatus(""), 3000);
   };
 
   return (
-    <div className="container-fluid py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="fw-bold text-dark d-flex align-items-center">
-          <Package className="me-2 text-primary" size={28} />
+    <div className="container mt-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h4 className="fw-bold mb-0 d-flex align-items-center text-primary">
           Master Inventory Catalog
-        </h3>
-        
-        {/* CSV Export Button */}
-        <button 
-          className="btn btn-success fw-bold d-flex align-items-center shadow-sm"
-          onClick={exportToCSV}
-          disabled={filteredInventory.length === 0}
-        >
-          <Download size={18} className="me-2" />
-          Export Report
-        </button>
+        </h4>
+        <div className="d-flex align-items-center gap-2">
+          {exportStatus && <span className="text-success small fw-bold mb-0">{exportStatus}</span>}
+          
+          <button 
+            className={`btn ${showLowStock ? 'btn-warning' : 'btn-outline-warning'} d-flex align-items-center fw-bold`} 
+            onClick={() => setShowLowStock(!showLowStock)}
+          >
+            <AlertCircle size={18} className="me-2" /> 
+            {showLowStock ? "Show All Stock" : "Low Stock Alerts"}
+          </button>
+
+          <button className="btn btn-success d-flex align-items-center" onClick={handleExportReport}>
+            <Download size={18} className="me-2" /> Export Report
+          </button>
+        </div>
       </div>
 
-      <div className="card shadow-sm border-0 bg-white">
-        <div className="card-header bg-white border-bottom p-3">
-          {/* Live Search Bar */}
-          <div className="input-group w-50">
-            <span className="input-group-text bg-light border-end-0">
-              <Search size={18} className="text-muted" />
-            </span>
-            <input 
-              type="text" 
-              className="form-control border-start-0 bg-light" 
-              placeholder="Search by product name or barcode..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      <div className="mb-3">
+        <div className="input-group">
+          <span className="input-group-text bg-white"><Search size={16} /></span>
+          <input type="text" className="form-control" placeholder="Search by product name or barcode..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        
-        <div className="card-body p-0">
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status"></div>
-              <p className="mt-2 text-muted">Loading catalog...</p>
-            </div>
-          ) : (
-            <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
-                <thead className="table-light text-muted small">
-                  <tr>
-                    <th>Product Name</th>
-                    <th>Barcode</th>
-                    <th>Category</th>
-                    <th>Expiry Date</th>
-                    <th>Stock</th>
-                    <th>MRP</th>
-                    <th>Total Value</th>
+      </div>
+
+      <div className="card shadow-sm border-0">
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0">
+            <thead className="table-light">
+              <tr>
+                <th>Product Name</th>
+                <th>Barcode</th>
+                <th>Category</th>
+                <th>Expiry Date</th>
+                <th>Stock</th>
+                <th>MRP</th>
+                <th>Total Value</th>
+                <th className="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="8" className="text-center py-4 text-muted">Loading inventory data...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan="8" className="text-center py-4 text-muted">No matching inventory items found.</td></tr>
+              ) : (
+                filtered.map((row) => (
+                  <tr key={row.batch_id} className={row.quantity < 5 ? "table-warning" : ""}>
+                    <td className="fw-semibold">{row.name}</td>
+                    <td><span className="text-muted small">{row.barcode}</span></td>
+                    <td><span className="badge bg-secondary">{row.category}</span></td>
+                    <td>{row.expiry_date}</td>
+                    <td>
+                      <span className={`badge ${row.quantity < 5 ? 'bg-danger' : 'bg-primary'}`}>
+                        {row.quantity} {row.quantity < 5 && ' (Reorder)'}
+                      </span>
+                    </td>
+                    <td>₹{row.mrp}</td>
+                    <td className="text-primary fw-semibold">₹{row.total_value}</td>
+                    <td className="text-end">
+                      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(row.batch_id)}>
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredInventory.length > 0 ? (
-                    filteredInventory.map((item) => (
-                      <tr key={item.batch_id}>
-                        <td className="fw-bold">{item.name}</td>
-                        <td><code className="text-muted">{item.barcode}</code></td>
-                        <td><span className="badge bg-secondary bg-opacity-25 text-dark">{item.category}</span></td>
-                        <td>
-                          <span className={item.days_left <= 30 ? "text-danger fw-bold" : "text-dark"}>
-                            {item.expiry_date}
-                          </span>
-                        </td>
-                        <td>{item.quantity}</td>
-                        <td>₹{item.mrp}</td>
-                        <td className="fw-semibold text-primary">₹{item.total_value}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="text-center py-4 text-muted">
-                        No products found matching "{searchTerm}"
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

@@ -5,6 +5,8 @@ axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
 // 2. Set your active Live Render URL
 const API_BASE_URL = "https://kirana-backend-3k05.onrender.com/api";
+// const API_BASE_URL = "http://127.0.0.1:8000/api"; 
+// Note: Change this back to the Render URL before deploying to production.
 
 // Fetch priority expiring stock for the main dashboard
 export const fetchExpiringInventory = async () => {
@@ -86,5 +88,18 @@ export const sellBatchUnit = async (batchId, quantity = 1) => {
   } catch (error) {
     console.error("Error updating batch quantity:", error);
     return { success: false };
+  }
+};
+
+
+
+// Send a natural language query to the RAG AI assistant
+export const askInventoryAssistant = async (message) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/chat`, { message });
+    return response.data.reply;
+  } catch (error) {
+    console.error("Chat API Error:", error);
+    return "Sorry, I am having trouble connecting to the database.";
   }
 };

@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Save, Search, ScanBarcode, ScanText, Image as ImageIcon, Crop as CropIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Camera, Save, Search, ScanBarcode, ScanText, Image as ImageIcon } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-// import ReactCrop from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
 import { scanProductImage, addInventoryBatch, getProductByBarcode } from '../api/apiService';
 
 export default function AddStockForm({ onClose, onRefresh }) {
@@ -11,12 +9,6 @@ export default function AddStockForm({ onClose, onRefresh }) {
   const [lookingUp, setLookingUp] = useState(false);
   const [scannedTextHelper, setScannedTextHelper] = useState("");
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
-
-  // Cropper State
-  const [imgSrc, setImgSrc] = useState('');
-  const [crop, setCrop] = useState();
-  const [completedCrop, setCompletedCrop] = useState(null);
-  const imgRef = useRef(null);
 
   const [formData, setFormData] = useState({
     barcode: '', name: '', category: 'General', mrp: '', batch_number: '', quantity: '', mfg_date: '', expiry_date: '', remaining_days: null
@@ -50,60 +42,32 @@ export default function AddStockForm({ onClose, onRefresh }) {
     return () => { if (scanner) scanner.clear().catch(() => {}); };
   }, [isScanningBarcode]);
 
-  // Load image into the cropper instead of sending immediately
-  const onSelectFile = (e) => {
+  // Bypass cropper and send directly to API
+  const onSelectFile = async (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      setCrop(undefined);
-      const reader = new FileReader();
-      reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''));
-      reader.readAsDataURL(e.target.files[0]);
+      setLoadingOcr(true);
+      setScannedTextHelper("");
+      const file = e.target.files[0];
+      await processOcrImage(file);
     }
-  };
-
-  // Generate cropped image and send to backend
-  const confirmCrop = () => {
-    if (!completedCrop || !imgRef.current) return;
-    setLoadingOcr(true);
-    setScannedTextHelper(""); 
-
-    const image = imgRef.current;
-    const canvas = document.createElement('canvas');
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    canvas.width = completedCrop.width;
-    canvas.height = completedCrop.height;
-    const ctx = canvas.getContext('2d');
-
-    ctx.drawImage(
-      image,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0, 0, completedCrop.width, completedCrop.height
-    );
-
-    canvas.toBlob(async (blob) => {
-      const croppedFile = new File([blob], "cropped_date.jpg", { type: 'image/jpeg' });
-      setImgSrc(''); // Hide cropper modal
-      await processOcrImage(croppedFile);
-    }, 'image/jpeg', 0.9);
   };
 
   const processOcrImage = async (file) => {
     try {
       const result = await scanProductImage(file);
-      if (result && (result.mfg_date || result.exp_date)) {
-        const rawText = result.text || "";
-        setScannedTextHelper(`AI Found: ${result.exp_date || "N/A"} | Raw Text: ${rawText.substring(0, 50)}...`);
+      const foundExp = result.expiry_date || result.exp_date;
+      
+      if (result && (result.mfg_date || foundExp)) {
+        const rawText = result.extracted_text || result.text || "";
+        setScannedTextHelper(`AI Found: ${foundExp || "N/A"} | Raw Text: ${rawText.substring(0, 50)}...`);
         setFormData(prev => ({ 
             ...prev, 
             mfg_date: result.mfg_date || prev.mfg_date,
-            expiry_date: result.exp_date || prev.expiry_date,
+            expiry_date: foundExp || prev.expiry_date,
             remaining_days: result.remaining_days !== undefined ? result.remaining_days : prev.remaining_days
         }));
       } else {
-        alert("Could not detect clear dates in that cropped area. Please type them manually.");
+        alert("Could not detect clear dates. Please type them manually.");
       }
     } catch (error) {
       alert("OCR failed. Check backend connection.");
@@ -135,22 +99,6 @@ export default function AddStockForm({ onClose, onRefresh }) {
           
           <div className="modal-body p-4">
             
-            {/* Cropper Overlay */}
-            {imgSrc && (
-              <div className="position-absolute top-0 start-0 w-100 h-100 bg-white z-3 p-3 d-flex flex-column align-items-center">
-                <h6 className="fw-bold mb-3"><CropIcon size={18} className="me-2"/>Crop exactly around the dates</h6>
-                <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
-                    <ReactCrop crop={crop} onChange={(_, percentCrop) => setCrop(percentCrop)} onComplete={(c) => setCompletedCrop(c)}>
-                        <img ref={imgRef} src={imgSrc} alt="Crop me" style={{ maxWidth: '100%' }} />
-                    </ReactCrop>
-                </div>
-                <div className="d-flex gap-2 mt-3 w-100">
-                    <button className="btn btn-secondary flex-grow-1" onClick={() => setImgSrc('')}>Cancel</button>
-                    <button className="btn btn-primary flex-grow-1" onClick={confirmCrop}>Scan Cropped Area</button>
-                </div>
-              </div>
-            )}
-
             {isScanningBarcode && (
               <div className="mb-4">
                 <div id="barcode-reader" className="w-100 overflow-hidden rounded border border-2 border-primary"></div>
@@ -158,7 +106,7 @@ export default function AddStockForm({ onClose, onRefresh }) {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ display: isScanningBarcode || imgSrc ? 'none' : 'block' }}>
+            <form onSubmit={handleSubmit} style={{ display: isScanningBarcode ? 'none' : 'block' }}>
               <div className="row g-3">
                 <div className="col-12">
                   <label className="form-label small fw-bold">Barcode</label>
@@ -198,7 +146,7 @@ export default function AddStockForm({ onClose, onRefresh }) {
                     </div>
                   </div>
                   
-                  {loadingOcr && <div className="alert alert-warning small mb-2 py-2">Scanning cropped area... please wait.</div>}
+                  {loadingOcr && <div className="alert alert-warning small mb-2 py-2">Scanning image... please wait (takes 10-30s).</div>}
                   {scannedTextHelper && <div className="alert alert-info py-2 small mb-2 shadow-sm"><strong>Scanner Result:</strong><br/>{scannedTextHelper}</div>}
                   
                   <div className="row mt-2">

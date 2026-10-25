@@ -4,6 +4,11 @@ from datetime import datetime, date
 from db import supabase
 from schemas import AddStockRequest
 from ocr_service import extract_expiry_date
+from pydantic import BaseModel
+from rag_service import ask_inventory_question
+
+class ChatRequest(BaseModel):
+    message: str
 
 # Define the app exactly ONCE
 app = FastAPI(title="Kirana Expiry Shield API")
@@ -183,3 +188,13 @@ def get_product_by_barcode(barcode: str):
     if not response.data:
         return {"exists": False, "product": None}
     return {"exists": True, "product": response.data[0]}
+
+
+
+@app.post("/api/chat")
+async def chat_with_inventory(request: ChatRequest):
+    try:
+        answer = ask_inventory_question(request.message)
+        return {"reply": answer}
+    except Exception as e:
+        return {"reply": f"AI service error: {str(e)}"}
