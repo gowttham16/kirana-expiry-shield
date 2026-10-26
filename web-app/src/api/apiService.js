@@ -4,8 +4,8 @@ import axios from 'axios';
 axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
 // 2. Set your active Live Render URL
-// const API_BASE_URL = "https://kirana-backend-3k05.onrender.com/api";
-const API_BASE_URL = "http://127.0.0.1:8000/api"; 
+const API_BASE_URL = "https://kirana-backend-3k05.onrender.com/api";
+// const API_BASE_URL = "http://127.0.0.1:8000/api"; 
 // Note: Change this back to the Render URL before deploying to production.
 
 // Fetch priority expiring stock for the main dashboard
