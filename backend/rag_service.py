@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_groq import ChatGroq
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
@@ -11,13 +11,16 @@ from db import supabase
 
 load_dotenv()
 
-# Initialize Embeddings and Groq LLM
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+# Initialize Ultra-Lightweight Local Embeddings (No API Key Required)
+embeddings = FastEmbedEmbeddings()
+
 llm = ChatGroq(
     temperature=0, 
     groq_api_key=os.getenv("GROQ_API_KEY"), 
     model_name="openai/gpt-oss-20b"
 )
+
+# ... keep the rest of your get_inventory_documents and ask_inventory_question functions exactly the same ...
 
 def get_inventory_documents():
     # Fetch data using the exact join structure from your main.py
