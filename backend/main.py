@@ -114,16 +114,20 @@ async def scan_product_label(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="File must be an image")
     try:
         image_bytes = await file.read()
-        print("🧠 SCANNER: Handing image to EasyOCR. This may take 30-60 seconds on CPU...")
+        print("🧠 SCANNER: Handing image to OCR API...")
         
         ocr_result = extract_expiry_date(image_bytes)
         
-        print(f"✅ SCANNER: AI finished! Found date: {ocr_result.get('date')}")
+        # Use the correct 'exp_date' key from ocr_service
+        extracted_expiry = ocr_result.get("exp_date")
+        
+        print(f"✅ SCANNER: AI finished! Found date: {extracted_expiry}")
         return {
             "success": True,
             "filename": file.filename,
             "extracted_text": ocr_result.get("text", ""),
-            "expiry_date": ocr_result.get("date", None)
+            "expiry_date": extracted_expiry,
+            "mfg_date": ocr_result.get("mfg_date", "")
         }
     except Exception as e:
         print(f"❌ OCR ERROR: {str(e)}")
