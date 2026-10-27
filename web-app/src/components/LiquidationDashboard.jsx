@@ -28,7 +28,7 @@ export default function LiquidationDashboard() {
       offerPrice = (offerPrice * 0.8).toFixed(2);
       discountText = `(Flat 20% OFF!)`;
     }
-    const text = `🚨 *KIRANA FLASH SALE* 🚨\n\nGrab *${item.product_name}* before it runs out!\n✅ Offer Price: ₹${offerPrice} ${discountText}\n📦 Stock available: ${item.quantity} units\n\nVisit our shop today to claim this deal!`;
+    const text = `🚨 *KIRANA FLASH SALE* 🚨\n\nGrab *${item.product_name}* before it runs out!\n\n✅ Offer Price: ₹${offerPrice} ${discountText}\n📦 Stock available: ${item.quantity} units\n\nVisit our shop today to claim this deal!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -56,58 +56,62 @@ export default function LiquidationDashboard() {
   return (
     <div className="container mt-4">
       <h4 className="fw-bold mb-4 d-flex align-items-center text-danger">
-        <AlertTriangle className="me-2" /> Liquidation & Expiry Alerts
+        <AlertTriangle className="me-2" /> Priority Expiry Alerts
       </h4>
 
       {loading ? (
-        <div className="text-center py-5"><div className="spinner-border text-primary" role="status"></div></div>
+        <div className="text-center py-5 d-flex flex-column align-items-center">
+          <div className="spinner-border text-primary mb-3" role="status"></div>
+          <span className="text-secondary">Analyzing batch risks...</span>
+        </div>
       ) : items.length === 0 ? (
-        <div className="alert alert-success">No items are expiring within the next 30 days!</div>
+        <div className="alert bg-success bg-opacity-25 text-success border-success">No items are expiring within the next 30 days!</div>
       ) : (
         <div className="row g-3">
           {items.map((item) => {
             const cardColor = item.days_left < 0 ? 'border-danger' : item.days_left <= 7 ? 'border-danger' : 'border-warning';
-            const badgeColor = item.days_left < 0 ? 'bg-danger' : item.days_left <= 7 ? 'bg-danger' : 'bg-warning text-dark';
+            const badgeColor = item.days_left < 0 ? 'bg-danger text-white' : item.days_left <= 7 ? 'bg-danger text-white' : 'bg-warning text-dark';
 
             return (
               <div key={item.batch_id} className="col-12 col-md-6 col-lg-4">
-                <div className={`card h-100 shadow-sm ${cardColor}`}>
+                <div className={`card h-100 shadow-sm bg-dark text-light ${cardColor}`}>
                   <div className="card-body">
-                    <div className="d-flex justify-content-between align-items-start mb-2">
+                    <div className="d-flex justify-content-between align-items-start mb-2 gap-2">
                       <h5 className="card-title fw-bold mb-0">{item.product_name}</h5>
-                      <span className={`badge ${badgeColor}`}>{item.status}</span>
+                      <span className={`badge ${badgeColor} flex-shrink-0`}>{item.status}</span>
                     </div>
-                    <p className="text-muted small mb-3">Barcode: {item.barcode}</p>
+                    <p className="text-secondary small mb-3">Barcode: {item.barcode}</p>
                     
                     <ul className="list-unstyled mb-3 small">
-                      <li><strong>Stock:</strong> {item.quantity} units</li>
-                      <li><strong>Remaining:</strong> {item.days_left} days</li>
-                      <li className="text-danger"><strong>Capital at Risk:</strong> ₹{item.potential_loss_rupees}</li>
+                      <li><strong className="text-gray-300">Stock:</strong> {item.quantity} units</li>
+                      <li><strong className="text-gray-300">Remaining:</strong> {item.days_left} days</li>
+                      <li className="text-danger fw-bold mt-1">Capital at Risk: ₹{item.potential_loss_rupees}</li>
                     </ul>
 
-                    <div className="p-2 bg-light rounded border d-flex align-items-center justify-content-between">
-                      <span className="fw-bold small text-primary">
+                    <div className="p-2 bg-secondary bg-opacity-25 rounded border border-secondary d-flex align-items-center justify-content-between">
+                      <span className="fw-bold small text-primary d-flex align-items-center">
                         <Tag size={14} className="me-1" /> Action:
                       </span>
-                      <span className="fw-bold text-dark small">{item.action}</span>
+                      <span className="fw-bold text-light small">{item.action}</span>
                     </div>
 
-                    <div className="d-flex justify-content-end gap-2 mt-3">
-                      <button className="btn btn-outline-success btn-sm" onClick={() => sendWhatsAppOffer(item)}>
+                    {/* Added flex-wrap here to ensure buttons stack on small screens */}
+                    <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
+                      <button className="btn btn-outline-success btn-sm flex-grow-1 flex-sm-grow-0" onClick={() => sendWhatsAppOffer(item)}>
                         Offer on WA
                       </button>
-                      <button className="btn btn-outline-primary btn-sm" onClick={() => handleSellOne(item.batch_id)}>
+                      <button className="btn btn-outline-primary btn-sm flex-grow-1 flex-sm-grow-0" onClick={() => handleSellOne(item.batch_id)}>
                         Sell 1
                       </button>
                       
                       {confirmClearId === item.batch_id ? (
-                        <div className="d-flex gap-1 align-items-center bg-light p-1 rounded border border-danger">
+                        <div className="d-flex gap-1 align-items-center bg-dark p-1 rounded border border-danger flex-grow-1 flex-sm-grow-0 justify-content-center">
                           <span className="small text-danger fw-bold ms-1 me-1">Clear?</span>
                           <button className="btn btn-danger btn-sm px-2 py-0" onClick={() => executeClearAll(item.batch_id)}>Yes</button>
                           <button className="btn btn-secondary btn-sm px-2 py-0" onClick={() => setConfirmClearId(null)}>No</button>
                         </div>
                       ) : (
-                        <button className="btn btn-outline-danger btn-sm" onClick={() => setConfirmClearId(item.batch_id)}>Clear All</button>
+                        <button className="btn btn-outline-danger btn-sm flex-grow-1 flex-sm-grow-0" onClick={() => setConfirmClearId(item.batch_id)}>Clear All</button>
                       )}
                     </div>
                   </div>
