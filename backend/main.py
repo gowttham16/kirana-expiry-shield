@@ -6,6 +6,8 @@ from schemas import AddStockRequest
 from ocr_service import extract_expiry_date
 from pydantic import BaseModel
 from rag_service import ask_inventory_question
+from email_service import send_critical_alert
+from datetime import datetime
 
 class ChatRequest(BaseModel):
     message: str
@@ -150,6 +152,16 @@ def add_inventory_batch(stock: dict):
             "quantity": stock["quantity"],
             "expiry_date": stock["expiry_date"]
         }).execute()
+
+        exp_date = datetime.strptime(stock["expiry_date"], "%Y-%m-%d").date()
+        days_left = (exp_date - datetime.now().date()).days
+        
+        if days_left <= 30:
+            send_critical_alert(stock["name"], days_left)
+
+        return {"success": True, "message": "Stock added"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
         
         return {"success": True, "message": "Stock added"}
     except Exception as e:

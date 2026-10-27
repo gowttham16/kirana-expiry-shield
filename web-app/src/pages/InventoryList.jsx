@@ -56,63 +56,66 @@ export default function InventoryList() {
     link.click();
     document.body.removeChild(link);
 
-    setExportStatus("✅ File Downloaded!");
+    setExportStatus("✅ Downloaded!");
     setTimeout(() => setExportStatus(""), 3000);
   };
 
   return (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="fw-bold text-secondary mb-0">Store Inventory Catalog</h4>
+    <div className="text-white">
+      {/* Mobile-first Header: Stacks on small screens, side-by-side on desktop */}
+      <div className="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4 gap-3">
+        <h4 className="fw-bold text-light mb-0">Store Inventory Catalog</h4>
         
-        <div className="d-flex align-items-center gap-3">
-          {exportStatus && <span className="text-success small fw-bold mb-0">{exportStatus}</span>}
+        <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-3 w-100" style={{ maxWidth: '600px' }}>
+          {exportStatus && <span className="text-success small fw-bold mb-0 text-center">{exportStatus}</span>}
           
-          <button className="btn btn-success d-flex align-items-center" onClick={handleExportReport}>
+          <button className="btn btn-success d-flex justify-content-center align-items-center flex-shrink-0" onClick={handleExportReport}>
             <Download size={18} className="me-2" />
             Export Report
           </button>
 
-          <div className="input-group" style={{ maxWidth: '320px' }}>
-            <span className="input-group-text bg-white"><Search size={16} /></span>
-            <input type="text" className="form-control" placeholder="Search name, barcode..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="input-group flex-grow-1">
+            <span className="input-group-text bg-dark text-secondary border-secondary"><Search size={16} /></span>
+            <input type="text" className="form-control bg-dark text-white border-secondary" placeholder="Search name, barcode..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
       </div>
 
-      <div className="card shadow-sm border-0">
-        <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
-            <thead className="table-light">
+      <div className="card shadow-lg border-0 bg-dark">
+        {/* Removed table-responsive horizontal scrolling in favor of hiding less critical columns on mobile */}
+        <div className="w-100">
+          <table className="table table-dark table-hover align-middle mb-0">
+            <thead className="table-active text-secondary">
               <tr>
                 <th>Product</th>
-                <th>Barcode</th>
-                <th>Category</th>
-                <th>MRP</th>
+                <th className="d-none d-lg-table-cell">Barcode</th>
+                <th className="d-none d-md-table-cell">Category</th>
+                <th className="d-none d-sm-table-cell">MRP</th>
                 <th>Stock</th>
-                <th>Total Value</th>
-                <th>Expiry</th>
+                <th className="d-none d-lg-table-cell">Total Value</th>
+                <th className="d-none d-md-table-cell">Expiry</th>
                 <th>Days Left</th>
                 <th className="text-end">Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="9" className="text-center py-4 text-muted">Loading inventory data...</td></tr>
+                <tr><td colSpan="9" className="text-center py-5 text-secondary">Loading inventory data...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan="9" className="text-center py-4 text-muted">No matching inventory items found.</td></tr>
+                <tr><td colSpan="9" className="text-center py-5 text-secondary">No matching inventory items found.</td></tr>
               ) : (
                 filtered.map((row) => (
                   <tr key={row.batch_id}>
-                    <td className="fw-semibold">{row.name}</td>
-                    <td><code>{row.barcode}</code></td>
-                    <td><span className="badge bg-light text-dark border">{row.category}</span></td>
-                    <td>₹{row.mrp}</td>
-                    <td><span className="badge bg-secondary">{row.quantity}</span></td>
-                    <td className="fw-semibold">₹{row.total_value}</td>
-                    <td>{row.expiry_date}</td>
+                    <td className="fw-semibold text-light">{row.name}</td>
+                    <td className="d-none d-lg-table-cell"><code className="text-secondary">{row.barcode}</code></td>
+                    <td className="d-none d-md-table-cell"><span className="badge bg-secondary bg-opacity-25 text-light border border-secondary">{row.category}</span></td>
+                    <td className="d-none d-sm-table-cell text-light">₹{row.mrp}</td>
+                    <td><span className="badge bg-secondary fs-6">{row.quantity}</span></td>
+                    <td className="d-none d-lg-table-cell fw-semibold text-light">₹{row.total_value}</td>
+                    <td className="d-none d-md-table-cell text-light">{row.expiry_date}</td>
                     <td>
-                      <span className={`badge ${row.days_left <= 30 ? 'bg-danger' : row.days_left <= 90 ? 'bg-warning text-dark' : 'bg-success'}`}>
+                      {/* High contrast badges for dark mode */}
+                      <span className={`badge border fs-6 ${row.days_left <= 30 ? 'bg-danger text-white border-danger' : row.days_left <= 90 ? 'bg-warning text-dark border-warning' : 'bg-success bg-opacity-25 text-success border-success'}`}>
                         {row.days_left}d
                       </span>
                     </td>
