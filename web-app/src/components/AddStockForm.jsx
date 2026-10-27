@@ -89,11 +89,11 @@ export default function AddStockForm({ onClose, onRefresh }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-gray-900 rounded-xl shadow-2xl p-4 md:p-6 text-white border border-gray-700">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-2xl p-4 md:p-6 text-dark border">
         
-        <div className="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-2">
-          <h5 className="fw-bold mb-0 text-white">Scan & Add Stock</h5>
-          <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+        <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+          <h5 className="fw-bold mb-0 text-dark">Scan & Add Stock</h5>
+          <button type="button" className="btn-close" onClick={onClose}></button>
         </div>
           
         {isScanningBarcode && (
@@ -106,28 +106,28 @@ export default function AddStockForm({ onClose, onRefresh }) {
         <form onSubmit={handleSubmit} style={{ display: isScanningBarcode ? 'none' : 'block' }}>
           <div className="row g-3">
             <div className="col-12">
-              <label className="form-label small fw-bold text-gray-300">Barcode</label>
+              <label className="form-label small fw-bold text-secondary">Barcode</label>
               <div className="input-group">
-                <input type="text" name="barcode" className="form-control bg-dark text-white border-secondary" value={formData.barcode} onChange={handleChange} onBlur={handleBarcodeLookup} required />
+                <input type="text" name="barcode" className="form-control" value={formData.barcode} onChange={handleChange} onBlur={handleBarcodeLookup} required />
                 <button type="button" className="btn btn-outline-secondary" onClick={handleBarcodeLookup} disabled={lookingUp}><Search size={16} /></button>
                 <button type="button" className="btn btn-primary" onClick={() => setIsScanningBarcode(true)}><ScanBarcode size={16} className="text-white" /></button>
               </div>
             </div>
 
             <div className="col-12">
-              <label className="form-label small fw-bold text-gray-300">Product Name</label>
-              <input type="text" name="name" className="form-control bg-dark text-white border-secondary" value={formData.name} onChange={handleChange} required />
+              <label className="form-label small fw-bold text-secondary">Product Name</label>
+              <input type="text" name="name" className="form-control" value={formData.name} onChange={handleChange} required />
             </div>
             <div className="col-6">
-              <label className="form-label small fw-bold text-gray-300">MRP (₹)</label>
-              <input type="number" step="0.01" name="mrp" className="form-control bg-dark text-white border-secondary" value={formData.mrp} onChange={handleChange} required />
+              <label className="form-label small fw-bold text-secondary">MRP (₹)</label>
+              <input type="number" step="0.01" name="mrp" className="form-control" value={formData.mrp} onChange={handleChange} required />
             </div>
             <div className="col-6">
-              <label className="form-label small fw-bold text-gray-300">Quantity</label>
-              <input type="number" name="quantity" className="form-control bg-dark text-white border-secondary" value={formData.quantity} onChange={handleChange} required />
+              <label className="form-label small fw-bold text-secondary">Quantity</label>
+              <input type="number" name="quantity" className="form-control" value={formData.quantity} onChange={handleChange} required />
             </div>
             
-            <div className="col-12 mt-4 p-3 bg-gray-800 rounded border border-gray-700">
+            <div className="col-12 mt-4 p-3 bg-light rounded border">
               <label className="form-label small fw-bold d-flex align-items-center text-primary mb-3">
                 <ScanText size={18} className="me-2" /> Auto-Extract Expiry Date
               </label>
@@ -139,35 +139,32 @@ export default function AddStockForm({ onClose, onRefresh }) {
                 </div>
                 <div className="flex-grow-1 position-relative">
                   <input type="file" accept="image/*" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer', zIndex: 10 }} onChange={onSelectFile} />
-                  <button type="button" className="btn btn-outline-secondary text-white w-100 shadow-sm"><ImageIcon size={18} className="me-2" /> Gallery</button>
+                  <button type="button" className="btn btn-outline-secondary bg-white w-100 shadow-sm"><ImageIcon size={18} className="me-2" /> Gallery</button>
                 </div>
               </div>
               
               {loadingOcr && (
-                <div className="flex items-center justify-center p-3 mb-4 bg-yellow-900/30 rounded-lg animate-pulse border border-yellow-700/50">
-                  <svg className="animate-spin h-5 w-5 text-yellow-500 mr-3" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                  </svg>
-                  <span className="text-yellow-400 font-medium">Extracting dates... (10-30s)</span>
+                <div className="d-flex align-items-center justify-content-center p-3 mb-4 bg-warning bg-opacity-25 rounded border border-warning">
+                  <div className="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
+                  <span className="text-dark font-medium small">Extracting dates... (10-30s)</span>
                 </div>
               )}
               
-              {scannedTextHelper && <div className="alert alert-info bg-blue-900/30 text-blue-300 border-blue-800 py-2 small mb-2 shadow-sm"><strong>Scanner Result:</strong><br/>{scannedTextHelper}</div>}
+              {scannedTextHelper && <div className="alert alert-info py-2 small mb-2 shadow-sm"><strong>Scanner Result:</strong><br/>{scannedTextHelper}</div>}
               
               <div className="row mt-2">
                   <div className="col-6">
-                      <label className="form-label small fw-bold text-gray-300">Mfg Date (YYYY-MM-DD)</label>
-                      <input type="date" name="mfg_date" className="form-control bg-dark text-white border-secondary" value={formData.mfg_date} onChange={handleChange} />
+                      <label className="form-label small fw-bold text-secondary">Mfg Date</label>
+                      <input type="date" name="mfg_date" className="form-control" value={formData.mfg_date} onChange={handleChange} />
                   </div>
                   <div className="col-6">
-                      <label className="form-label small fw-bold text-gray-300">Expiry Date (YYYY-MM-DD)</label>
-                      <input type="date" name="expiry_date" className="form-control bg-dark text-white border-secondary" value={formData.expiry_date} onChange={handleChange} required />
+                      <label className="form-label small fw-bold text-secondary">Expiry Date</label>
+                      <input type="date" name="expiry_date" className="form-control" value={formData.expiry_date} onChange={handleChange} required />
                   </div>
               </div>
 
               {formData.remaining_days !== null && (
-                  <div className={`alert mt-3 py-2 small fw-bold text-center ${formData.remaining_days > 0 ? 'bg-green-900/30 text-green-400 border-green-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
+                  <div className={`alert mt-3 py-2 small fw-bold text-center ${formData.remaining_days > 0 ? 'alert-success' : 'alert-danger'}`}>
                       Shelf Life: {formData.remaining_days > 0 ? `${formData.remaining_days} days remaining` : 'EXPIRED!'}
                   </div>
               )}
@@ -175,7 +172,7 @@ export default function AddStockForm({ onClose, onRefresh }) {
           </div>
 
           <div className="mt-4 d-flex justify-content-end gap-2">
-            <button type="button" className="btn btn-outline-light" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-success" disabled={saving || loadingOcr}><Save size={18} className="me-2" /> Save Stock</button>
           </div>
         </form>
