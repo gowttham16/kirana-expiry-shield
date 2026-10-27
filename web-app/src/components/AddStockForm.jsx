@@ -88,94 +88,98 @@ export default function AddStockForm({ onClose, onRefresh }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-2xl p-4 md:p-6 text-dark border">
-        
-        <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
-          <h5 className="fw-bold mb-0 text-dark">Scan & Add Stock</h5>
-          <button type="button" className="btn-close" onClick={onClose}></button>
-        </div>
+    <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} tabIndex="-1">
+      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div className="modal-content border-0 shadow-lg">
           
-        {isScanningBarcode && (
-          <div className="mb-4">
-            <div id="barcode-reader" className="w-100 overflow-hidden rounded border border-2 border-primary bg-white"></div>
-            <button type="button" className="btn btn-sm btn-danger w-100 mt-2" onClick={() => setIsScanningBarcode(false)}>Cancel Barcode Scanner</button>
+          <div className="modal-header border-bottom">
+            <h5 className="modal-title fw-bold">Scan & Add Stock</h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: isScanningBarcode ? 'none' : 'block' }}>
-          <div className="row g-3">
-            <div className="col-12">
-              <label className="form-label small fw-bold text-secondary">Barcode</label>
-              <div className="input-group">
-                <input type="text" name="barcode" className="form-control" value={formData.barcode} onChange={handleChange} onBlur={handleBarcodeLookup} required />
-                <button type="button" className="btn btn-outline-secondary" onClick={handleBarcodeLookup} disabled={lookingUp}><Search size={16} /></button>
-                <button type="button" className="btn btn-primary" onClick={() => setIsScanningBarcode(true)}><ScanBarcode size={16} className="text-white" /></button>
+          
+          <div className="modal-body p-4">
+            {isScanningBarcode && (
+              <div className="mb-4">
+                <div id="barcode-reader" className="w-100 overflow-hidden rounded border border-2 border-primary bg-white"></div>
+                <button type="button" className="btn btn-sm btn-danger w-100 mt-2" onClick={() => setIsScanningBarcode(false)}>Cancel Barcode Scanner</button>
               </div>
-            </div>
+            )}
 
-            <div className="col-12">
-              <label className="form-label small fw-bold text-secondary">Product Name</label>
-              <input type="text" name="name" className="form-control" value={formData.name} onChange={handleChange} required />
-            </div>
-            <div className="col-6">
-              <label className="form-label small fw-bold text-secondary">MRP (₹)</label>
-              <input type="number" step="0.01" name="mrp" className="form-control" value={formData.mrp} onChange={handleChange} required />
-            </div>
-            <div className="col-6">
-              <label className="form-label small fw-bold text-secondary">Quantity</label>
-              <input type="number" name="quantity" className="form-control" value={formData.quantity} onChange={handleChange} required />
-            </div>
-            
-            <div className="col-12 mt-4 p-3 bg-light rounded border">
-              <label className="form-label small fw-bold d-flex align-items-center text-primary mb-3">
-                <ScanText size={18} className="me-2" /> Auto-Extract Expiry Date
-              </label>
-              
-              <div className="d-flex gap-2 mb-3">
-                <div className="flex-grow-1 position-relative">
-                  <input type="file" accept="image/*" capture="environment" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer', zIndex: 10 }} onChange={onSelectFile} />
-                  <button type="button" className="btn btn-primary w-100 shadow-sm"><Camera size={18} className="me-2" /> Use Camera</button>
+            <form onSubmit={handleSubmit} style={{ display: isScanningBarcode ? 'none' : 'block' }}>
+              <div className="row g-3">
+                <div className="col-12">
+                  <label className="form-label small fw-bold">Barcode</label>
+                  <div className="input-group">
+                    <input type="text" name="barcode" className="form-control" value={formData.barcode} onChange={handleChange} onBlur={handleBarcodeLookup} required />
+                    <button type="button" className="btn btn-outline-secondary" onClick={handleBarcodeLookup} disabled={lookingUp}><Search size={16} /></button>
+                    <button type="button" className="btn btn-primary" onClick={() => setIsScanningBarcode(true)}><ScanBarcode size={16} className="text-white" /></button>
+                  </div>
                 </div>
-                <div className="flex-grow-1 position-relative">
-                  <input type="file" accept="image/*" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer', zIndex: 10 }} onChange={onSelectFile} />
-                  <button type="button" className="btn btn-outline-secondary bg-white w-100 shadow-sm"><ImageIcon size={18} className="me-2" /> Gallery</button>
+
+                <div className="col-12">
+                  <label className="form-label small fw-bold">Product Name</label>
+                  <input type="text" name="name" className="form-control" value={formData.name} onChange={handleChange} required />
+                </div>
+                <div className="col-6">
+                  <label className="form-label small fw-bold">MRP (₹)</label>
+                  <input type="number" step="0.01" name="mrp" className="form-control" value={formData.mrp} onChange={handleChange} required />
+                </div>
+                <div className="col-6">
+                  <label className="form-label small fw-bold">Quantity</label>
+                  <input type="number" name="quantity" className="form-control" value={formData.quantity} onChange={handleChange} required />
+                </div>
+                
+                <div className="col-12 mt-4 p-3 bg-body-tertiary rounded border">
+                  <label className="form-label small fw-bold d-flex align-items-center text-primary mb-3">
+                    <ScanText size={18} className="me-2" /> Auto-Extract Expiry Date
+                  </label>
+                  
+                  <div className="d-flex gap-2 mb-3">
+                    <div className="flex-grow-1 position-relative">
+                      <input type="file" accept="image/*" capture="environment" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer', zIndex: 10 }} onChange={onSelectFile} />
+                      <button type="button" className="btn btn-primary w-100 shadow-sm"><Camera size={18} className="me-2" /> Use Camera</button>
+                    </div>
+                    <div className="flex-grow-1 position-relative">
+                      <input type="file" accept="image/*" className="form-control position-absolute opacity-0 w-100 h-100" style={{ cursor: 'pointer', zIndex: 10 }} onChange={onSelectFile} />
+                      <button type="button" className="btn btn-outline-secondary w-100 shadow-sm"><ImageIcon size={18} className="me-2" /> Gallery</button>
+                    </div>
+                  </div>
+                  
+                  {loadingOcr && (
+                    <div className="d-flex align-items-center justify-content-center p-3 mb-4 rounded border text-warning border-warning" style={{ backgroundColor: 'rgba(255, 193, 7, 0.1)' }}>
+                      <div className="spinner-border spinner-border-sm me-2" role="status"></div>
+                      <span className="font-medium small">Extracting dates... (10-30s)</span>
+                    </div>
+                  )}
+                  
+                  {scannedTextHelper && <div className="alert alert-info py-2 small mb-2 shadow-sm"><strong>Scanner Result:</strong><br/>{scannedTextHelper}</div>}
+                  
+                  <div className="row mt-2">
+                      <div className="col-6">
+                          <label className="form-label small fw-bold">Mfg Date</label>
+                          <input type="date" name="mfg_date" className="form-control" value={formData.mfg_date} onChange={handleChange} />
+                      </div>
+                      <div className="col-6">
+                          <label className="form-label small fw-bold">Expiry Date</label>
+                          <input type="date" name="expiry_date" className="form-control" value={formData.expiry_date} onChange={handleChange} required />
+                      </div>
+                  </div>
+
+                  {formData.remaining_days !== null && (
+                      <div className={`alert mt-3 py-2 small fw-bold text-center ${formData.remaining_days > 0 ? 'alert-success' : 'alert-danger'}`}>
+                          Shelf Life: {formData.remaining_days > 0 ? `${formData.remaining_days} days remaining` : 'EXPIRED!'}
+                      </div>
+                  )}
                 </div>
               </div>
-              
-              {loadingOcr && (
-                <div className="d-flex align-items-center justify-content-center p-3 mb-4 bg-warning bg-opacity-25 rounded border border-warning">
-                  <div className="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
-                  <span className="text-dark font-medium small">Extracting dates... (10-30s)</span>
-                </div>
-              )}
-              
-              {scannedTextHelper && <div className="alert alert-info py-2 small mb-2 shadow-sm"><strong>Scanner Result:</strong><br/>{scannedTextHelper}</div>}
-              
-              <div className="row mt-2">
-                  <div className="col-6">
-                      <label className="form-label small fw-bold text-secondary">Mfg Date</label>
-                      <input type="date" name="mfg_date" className="form-control" value={formData.mfg_date} onChange={handleChange} />
-                  </div>
-                  <div className="col-6">
-                      <label className="form-label small fw-bold text-secondary">Expiry Date</label>
-                      <input type="date" name="expiry_date" className="form-control" value={formData.expiry_date} onChange={handleChange} required />
-                  </div>
-              </div>
 
-              {formData.remaining_days !== null && (
-                  <div className={`alert mt-3 py-2 small fw-bold text-center ${formData.remaining_days > 0 ? 'alert-success' : 'alert-danger'}`}>
-                      Shelf Life: {formData.remaining_days > 0 ? `${formData.remaining_days} days remaining` : 'EXPIRED!'}
-                  </div>
-              )}
-            </div>
+              <div className="mt-4 d-flex justify-content-end gap-2 border-top pt-3">
+                <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancel</button>
+                <button type="submit" className="btn btn-success" disabled={saving || loadingOcr}><Save size={18} className="me-2" /> Save Stock</button>
+              </div>
+            </form>
           </div>
-
-          <div className="mt-4 d-flex justify-content-end gap-2">
-            <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-success" disabled={saving || loadingOcr}><Save size={18} className="me-2" /> Save Stock</button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );
