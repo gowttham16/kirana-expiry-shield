@@ -6,6 +6,14 @@ A full-stack, mobile-responsive inventory management platform designed to help s
 Free-tier cloud servers (like Render's 512MB RAM limit) crash when running heavy AI/OCR image processing locally. 
 **The Solution:** Engineered a lightweight microservice architecture that offloads image processing to an external Cloud OCR API, allowing the FastAPI backend to seamlessly extract manufacturing and expiry dates from packaging photos without exceeding memory limits.
 
+
+<img width="1910" height="1007" alt="image" src="https://github.com/user-attachments/assets/67b19d77-b549-48b8-8c5a-f0e6c47cd19c" />
+<img width="638" height="817" alt="image" src="https://github.com/user-attachments/assets/1d54ac5d-41b9-4a49-b0ce-c526368b5e8d" />
+<img width="1638" height="565" alt="image" src="https://github.com/user-attachments/assets/5d94f22f-5489-4253-8842-53cf9d64bb33" />
+<img width="1917" height="917" alt="image" src="https://github.com/user-attachments/assets/081c84fb-7cb1-42c6-9a90-cefb3f24417a" />
+
+
+
 ## 💻 Tech Stack
 * **Frontend:** React, Bootstrap 5, HTML5 QR Scanner
 * **Backend:** FastAPI, Python
