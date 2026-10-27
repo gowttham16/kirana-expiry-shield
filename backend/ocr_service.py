@@ -29,10 +29,10 @@ def extract_expiry_date(image_bytes: bytes) -> dict:
             'https://api.ocr.space/parse/image',
             files={'file': ('image.jpg', image_bytes, 'image/jpeg')},
             data={
-                'apikey': 'helloworld', 
+                'apikey': 'K8133335424284288957', 
                 'language': 'eng', 
                 'scale': 'true', 
-                'OCREngine': '1'
+                'OCREngine': '2'
             },
             timeout=15
         )
